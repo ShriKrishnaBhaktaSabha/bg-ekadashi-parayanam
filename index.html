@@ -215,7 +215,7 @@
   var CONTACT = '';                               // name devotees should contact, e.g. 'Ranjani Ramesh'. Empty = "the sabha coordinator"
   /* ==================== */
 
-  var DEMO = /[?&]demo\b/.test(location.search) || API_URL.indexOf('https://script.google.com/macros/s/AKfycbxGRI1ufGJrEhv_GViLvIXJM5PgdO2CDOr49XTjB0tTmtI00th8AkkGH4DA-DTvEMUZ/exec') === 0;
+  var DEMO = /[?&]demo\b/.test(location.search) || API_URL.indexOf('PASTE_') === 0;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
