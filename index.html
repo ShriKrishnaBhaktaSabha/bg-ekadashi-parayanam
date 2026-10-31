@@ -191,11 +191,12 @@
       <form id="leaderForm" novalidate>
         <label for="lkPhone">Your WhatsApp number</label>
         <input id="lkPhone" type="tel" inputmode="numeric" autocomplete="tel">
-        <label for="lkPin" style="margin-top:12px">Leaders PIN</label>
+        <label for="lkPin" style="margin-top:12px">Your PIN</label>
         <input id="lkPin" type="password" autocomplete="off">
         <button class="btn" type="submit" id="lkBtn">Sign in</button>
       </form>
       <div id="lkMsg" role="status" aria-live="polite"></div>
+      <p style="margin:14px 0 0;color:var(--muted);font-size:17px">First time? Ask the coordinator for your PIN. You will then choose your own. Forgot it? Ask the coordinator for a new one.</p>
     </section>
     <div id="leaderPanel" hidden></div>
   </section>
@@ -636,9 +637,22 @@
               unavailable: [{ name: 'Kamala R', phone: '9000000005', group: '2', portion: 'Chapter 7, shlokas 3-6' }, { name: 'Usha G', phone: '9000000006', group: '3', portion: 'Chapter 9, shlokas 10-13' }],
               backups: [{ name: 'Backup Person One', phone: '9000000007', group: '3' }, { name: 'Backup Person Two', phone: '9000000008', group: '1' }] } });
         }
+        if (p.action === 'leaderOverview' || p.action === 'leaderSet' || p.action === 'leaderChangePin') {
+          var lkState = (p.leaderPin === '123456' && !demo.lkPin) ? 'temp' : (demo.lkPin && p.leaderPin === demo.lkPin ? 'own' : null);
+          if (!lkState || String(p.phone).replace(/\D/g, '').slice(-10) === '0000000000') return res({ ok: false, error: 'wrong_login' });
+          if (p.action === 'leaderChangePin') {
+            if (!p.newPin || p.newPin.length < 4 || p.newPin === p.leaderPin) return res({ ok: false, error: 'weak_pin' });
+            demo.lkPin = p.newPin; return res({ ok: true });
+          }
+          if (lkState === 'temp') return res(p.action === 'leaderSet' ? { ok: false, error: 'must_change_pin' } : { ok: true, mustChange: true, leader: { name: 'Rupa Mukherjee' } });
+        }
+        if (p.action === 'adminLeaders') {
+          if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
+          return res({ ok: true, leaders: [{ id: 'BG-145', name: 'Rupa Mukherjee', phone: '9000000011', groups: [6], status: demo.lkPin ? 'own' : 'temporary' },
+            { id: 'BG-192', name: 'Uma Sankaran', phone: '9000000012', groups: [7], status: 'none' }, { id: 'BG-136', name: 'Ranjani Ramesh', phone: '9000000013', groups: [4], status: 'none' }] });
+        }
+        if (p.action === 'adminIssueLeaderPins') return res({ ok: true, issued: [{ name: 'Uma Sankaran', phone: '9000000012', groups: [7], pin: '482913' }, { name: 'Ranjani Ramesh', phone: '9000000013', groups: [4], pin: '715204' }] });
         if (p.action === 'leaderOverview') {
-          if (p.leaderPin !== '1234') return res({ ok: false, error: 'wrong_pin' });
-          if (String(p.phone).replace(/\D/g, '').slice(-10) === '0000000000') return res({ ok: false, error: 'not_leader' });
           var eks = [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }];
           var cur = eks.filter(function (e) { return e.no === Number(p.no); })[0] || eks[0];
           var mem = [['BG-001', 'Lalitha Seetharaman', null], ['BG-020', 'Kamala R', null], ['BG-021', 'Usha G', null], ['BG-022', 'Sridevi M Mehta', 'Done']];
@@ -668,6 +682,7 @@
     nothing_to_generate: 'There is no upcoming Ekadashi waiting for an allotment.',
     no_such_ekadashi: 'That Ekadashi was not found in the sheet.',
     no_such_devotee: 'That devotee was not found.',
+    no_leader: 'That leader was not found.',
     bad_phone: 'Please enter a 10-digit mobile number.',
     bad_name: 'Please enter a name.',
     bad_group: 'The group must be a number.'
@@ -857,9 +872,12 @@
 
     h += '<section class="card"><h2>Devotees</h2><p style="margin:0 0 6px;color:var(--muted)">Add a devotee, change a group, or mark someone inactive.</p>' +
       '<button class="btn secondary small" type="button" id="openDev">Open devotee list</button><div id="devBox"></div></section>';
+    h += '<section class="card"><h2>Leaders\' PINs</h2><p style="margin:0 0 6px;color:var(--muted)">Every Group Leader and Zoom Leader has a personal PIN. Issue a first PIN here and send it privately. The leader then chooses their own.</p>' +
+      '<button class="btn secondary small" type="button" id="openLeaders">Show leaders</button><div id="leadBox"></div></section>';
     h += '<p style="text-align:center"><button class="link" id="signOut" type="button">Sign out</button></p>';
     $('adminPanel').innerHTML = h;
     if (devData) renderDevotees();
+    if (leadData) renderLeaderPins();
   }
 
   $('adminPanel').addEventListener('click', function (e) {
@@ -874,10 +892,52 @@
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
       return;
     }
-    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
+    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
     if (e.target.id === 'openDev') { loadDevotees(e.target); return; }
     var tg = e.target.closest('[data-tog]');
     if (tg) { toggleActive(tg); return; }
+  });
+
+  /* --- leaders' PINs --- */
+  var leadData = null, issuedList = [];
+  function pageUrl() { return location.href.split('#')[0].split('?')[0]; }
+  var STATUS_TXT = { none: 'No PIN yet', temporary: 'Temporary PIN issued', own: 'Has own PIN' };
+  function renderLeaderPins() {
+    var h = '';
+    if (issuedList.length) {
+      h += '<div class="msg"><strong>New PINs</strong> (shown only now). Send each one privately.<ul class="list">' + issuedList.map(function (x) {
+        var text = 'Hari Om ' + x.name + ' \uD83D\uDE4F Your personal PIN for the Group Leader login of the Gita Parayanam page is ' + x.pin + '. Open ' + pageUrl() + ' , tap Leader login, and sign in with your WhatsApp number and this PIN. You will then choose your own PIN. Please do not share it. Hare Krishna \uD83D\uDE4F';
+        return '<li><span>' + esc(x.name) + '<small>PIN <strong>' + esc(x.pin) + '</strong></small></span><a class="btn small secondary" target="_blank" rel="noopener" href="' + waLink(x.phone, text) + '">Send</a></li>';
+      }).join('') + '</ul></div>';
+    }
+    h += '<p style="margin:14px 0 6px"><strong>' + leadData.length + '</strong> leaders</p>' +
+      '<button class="btn small" type="button" id="issueMissing">Issue PINs to leaders who have none</button><ul class="list">' +
+      leadData.map(function (l) {
+        return '<li><span>' + esc(l.name) + '<small>Group ' + esc(l.groups.join(', ')) + ' &middot; ' + esc(STATUS_TXT[l.status]) + '</small></span>' +
+          '<button class="btn small secondary" type="button" data-issue="' + esc(l.phone) + '">' + (l.status === 'none' ? 'Issue PIN' : 'New PIN') + '</button></li>';
+      }).join('') + '</ul>';
+    $('leadBox').innerHTML = h;
+  }
+  function loadLeaderPins(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Please wait...'; }
+    return api({ action: 'adminLeaders', pin: pin }).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Reload leaders'; }
+      if (!r.ok) { say($('leadBox'), adminErr(r), true); return; }
+      leadData = r.leaders; renderLeaderPins();
+    }).catch(function () { if (btn) { btn.disabled = false; btn.textContent = 'Show leaders'; } say($('leadBox'), NET, true); });
+  }
+  $('adminPanel').addEventListener('click', function (e) {
+    if (e.target.id === 'openLeaders') { loadLeaderPins(e.target); return; }
+    var go = e.target.closest('#issueMissing, [data-issue]'); if (!go) return;
+    var body = go.id === 'issueMissing' ? { mode: 'missing' } : { mode: 'one', phone: go.getAttribute('data-issue') };
+    if (body.mode === 'one' && !confirm('This replaces the leader\'s current PIN. Continue?')) return;
+    go.disabled = true;
+    api({ action: 'adminIssueLeaderPins', pin: pin, mode: body.mode, phone: body.phone }).then(function (r) {
+      go.disabled = false;
+      if (!r.ok) { say($('leadBox'), adminErr(r), true); return; }
+      issuedList = r.issued.concat(body.mode === 'one' ? [] : []);
+      loadLeaderPins(null);
+    }).catch(function () { go.disabled = false; say($('leadBox'), NET, true); });
   });
 
   /* --- devotee tools --- */
@@ -971,11 +1031,11 @@
   /* ===== Group leader (English) ===== */
   var lk = null, lkData = null;
   var LEADER_ERR = {
-    wrong_pin: 'The PIN is not correct.',
-    pin_not_set: 'The leaders PIN has not been set yet. Please ask the coordinator.',
+    wrong_login: 'The number or PIN is not correct, or this number is not a leader. If you are a leader and do not have a PIN yet, please ask the coordinator.',
+    locked: 'Too many wrong attempts. Please try again after 15 minutes.',
     bad_phone: 'Please enter a 10-digit mobile number.',
-    not_found: 'We could not find this number.',
-    not_leader: 'This number is not listed as a Group Leader or Zoom Leader.',
+    weak_pin: 'Please choose a PIN of 4 to 12 characters that is different from your current PIN.',
+    must_change_pin: 'Please choose your own PIN first.',
     past_ekadashi: 'This Ekadashi has already passed.',
     not_your_group: 'You can only change devotees of your own group.',
     already_done: 'This devotee has already read the portion, so it cannot be changed.'
@@ -990,8 +1050,16 @@
     return api({ action: 'leaderOverview', phone: lk.phone, leaderPin: lk.pin, no: no }).then(function (r) {
       btn.disabled = false; btn.textContent = 'Sign in';
       if (!r.ok) { say($('lkMsg'), lkErr(r), true); $('leaderPanel').hidden = true; $('leaderLogin').hidden = false; return; }
-      $('leaderLogin').hidden = true; $('leaderPanel').hidden = false; lkData = r; renderLeader();
+      $('leaderLogin').hidden = true; $('leaderPanel').hidden = false;
+      if (r.mustChange) { lkData = null; renderSetPin(r.leader.name); return; }
+      lkData = r; renderLeader();
     }).catch(function () { btn.disabled = false; btn.textContent = 'Sign in'; say($('lkMsg'), NET, true); });
+  }
+  function renderSetPin(name) {
+    $('leaderPanel').innerHTML = '<section class="card"><h2>Hari Om, ' + esc(name) + '</h2><p style="margin:0 0 10px">Please choose your own PIN. It is only for you, so please do not share it.</p>' +
+      '<form id="setPinForm" novalidate><label for="spN">New PIN (4 to 12 characters)</label><input id="spN" name="np" type="password" autocomplete="new-password">' +
+      '<label for="spN2" style="margin-top:12px">Type it again</label><input id="spN2" name="np2" type="password" autocomplete="new-password">' +
+      '<button class="btn" type="submit">Save my PIN</button><div class="pinmsg" role="status" aria-live="polite"></div></form></section>';
   }
   function memberRow(m) {
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + '</p><div class="ctl">';
@@ -1017,6 +1085,11 @@
           (away ? ', ' + away + ' not available' : '') + '</p><div>' + g.members.map(memberRow).join('') + '</div></section>';
       });
     }
+    h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="changePinForm" novalidate>' +
+      '<label for="cpC" style="margin-top:10px">Current PIN</label><input id="cpC" name="cur" type="password" autocomplete="current-password">' +
+      '<label for="cpN" style="margin-top:12px">New PIN (4 to 12 characters)</label><input id="cpN" name="np" type="password" autocomplete="new-password">' +
+      '<label for="cpN2" style="margin-top:12px">Type the new PIN again</label><input id="cpN2" name="np2" type="password" autocomplete="new-password">' +
+      '<button class="btn" type="submit">Change my PIN</button><div class="pinmsg" role="status" aria-live="polite"></div></form></details></section>';
     h += '<p style="text-align:center"><button class="link" id="lkOut" type="button">Sign out</button></p>';
     $('leaderPanel').innerHTML = h;
   }
@@ -1041,6 +1114,21 @@
         rowFlash(id, 'Saved'); var nb = document.querySelector('#leaderPanel [data-away="' + id + '"]'); if (nb) nb.focus();
       } else { b.disabled = false; rowFlash(id, lkErr(res), true); }
     }).catch(function () { b.disabled = false; rowFlash(id, NET, true); });
+  });
+  $('leaderPanel').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, np = f.querySelector('[name=np]').value, np2 = f.querySelector('[name=np2]').value, box = f.querySelector('.pinmsg');
+    var isSet = f.id === 'setPinForm', cur = isSet ? lk.pin : f.querySelector('[name=cur]').value;
+    if (!cur) { say(box, 'Please type your current PIN.', true); return; }
+    if (np.length < 4 || np.length > 12) { say(box, LEADER_ERR.weak_pin, true); return; }
+    if (np !== np2) { say(box, 'The two PINs are not the same.', true); return; }
+    say(box, 'Please wait...');
+    api({ action: 'leaderChangePin', phone: lk.phone, leaderPin: cur, newPin: np }).then(function (r) {
+      if (r.ok) {
+        lk.pin = np;
+        if (isSet) loadLeader(); else { f.reset(); say(box, 'Your PIN has been changed.'); }
+      } else say(box, lkErr(r), true);
+    }).catch(function () { say(box, NET, true); });
   });
   $('leaderPanel').addEventListener('change', function (e) { if (e.target.id === 'lkEk') loadLeader(+e.target.value); });
   $('leaderForm').addEventListener('submit', function (e) {
@@ -1069,7 +1157,7 @@
   if (DEMO) {
     var note = document.createElement('p');
     note.style.cssText = 'text-align:center;color:#6b4b00;background:#FFF4D6;border-radius:10px;padding:6px 10px;font-size:16px;margin:8px 0 0';
-    note.textContent = 'Preview with sample data. Coordinator PIN in preview: 1234.';
+    note.textContent = 'Preview with sample data. Coordinator PIN: 1234. Leader: any number, first PIN 123456.';
     document.querySelector('header').appendChild(note);
   }
 })();
