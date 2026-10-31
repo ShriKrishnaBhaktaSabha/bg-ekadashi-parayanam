@@ -107,6 +107,12 @@
   .chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: calc(16px * var(--s)); font-weight: 600; }
   .chip.ready { background: #E3F4EA; color: #12512f; }
   .chip.wait { background: #FFF4D6; color: #6b4b00; }
+  .chip.grey { background: #EEF0F4; color: #4A5B78; }
+  .gv details { margin: 10px 0 0; border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px; background: #fff; }
+  .gv summary { padding: 10px 0; }
+  .gv summary small { display: block; font-weight: 400; color: var(--muted); font-size: calc(16px * var(--s)); }
+  .gv .row2 { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+  .gv .by { display: block; color: var(--muted); font-size: calc(15px * var(--s)); }
   table { width: 100%; border-collapse: collapse; font-size: calc(18px * var(--s)); margin-top: 8px; }
   th, td { text-align: left; padding: 8px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
   th { font-weight: 600; color: var(--muted); border-top: 0; }
@@ -680,6 +686,16 @@
           return res({ ok: true, leader: { name: 'Uma Sankaran', groups: [7] }, ekadashis: [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi' }], ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi' },
             groups: [{ group: 7, members: zm.map(function (m, i) { return { id: m[0], name: m[1], portion: m[2], count: m[3], status: i === 4 ? 'Unavailable' : (demo.zl[m[0]] || 'Pending') }; }) }] });
         }
+        if (p.action === 'adminSetAvailability' || p.action === 'adminSetRead') return res({ ok: true, changed: 1, skipped: 0 });
+        if (p.action === 'adminGroups') {
+          if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
+          var mk = function (id, name, portion, count, status, away, by) { return { id: id, name: name, away: away, awayBy: by || '', hasRow: !away || status === 'Unavailable', portion: portion, count: count, status: status, doneAt: status === 'Done' ? '31 Oct 2026 20:15 (Zoom Leader: Lalitha Ganesh)' : '' }; };
+          return res({ ok: true, ekadashis: [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', generated: false }], ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true },
+            groups: [
+              { group: 1, leader: 'Smt. Radha Rani', zoomLeader: 'Smt. Lalitha Ganesh', members: [mk('BG-1', 'Banureka', 'Dhyana Shloka, shlokas 1-3', 3, 'Unavailable', true, 'Leader: Radha Rani Basabathini'), mk('BG-2', 'Chandra Ravi', 'Dhyana Shloka, shlokas 4-7', 4, 'Done', false), mk('BG-3', 'Kamakshi Ekambaram', 'Dhyana Shloka, shlokas 8-10', 3, 'Pending', false)] },
+              { group: 2, leader: 'Smt. Radha Krishnaswamy', zoomLeader: 'Smt. Anuradha Sampath', members: [mk('BG-4', 'Lalitha V', 'Chapter 2, shlokas 7-10', 4, 'Pending', false), mk('BG-5', 'Madhavi Kotra', 'Chapter 2, shlokas 11-13', 3, 'Done', false)] },
+              { group: 3, leader: 'Smt. Madhavi Kotra', zoomLeader: '', members: [mk('BG-6', 'Nupur Karunakar', 'Chapter 3, shlokas 4-7', 4, 'Pending', false)] }] });
+        }
         if (p.action === 'adminLeaders') {
           if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
           return res({ ok: true, leaders: [{ id: 'BG-145', name: 'Rupa Mukherjee', phone: '9000000011', groups: [6], status: demo.lkPin ? 'own' : 'temporary' },
@@ -717,6 +733,9 @@
     no_such_ekadashi: 'That Ekadashi was not found in the sheet.',
     no_such_devotee: 'That devotee was not found.',
     no_leader: 'That leader was not found.',
+    past_ekadashi: 'This Ekadashi has already passed, so availability can no longer be changed.',
+    already_done: 'This devotee is marked as read. Mark them as not read first.',
+    not_open: 'Reading can be marked only from the day of the Ekadashi.',
     bad_phone: 'Please enter a 10-digit mobile number.',
     bad_name: 'Please enter a name.',
     bad_group: 'The group must be a number.'
@@ -905,6 +924,8 @@
       h += '</ul></details></section>';
     }
 
+    h += '<section class="card gv"><h2>Group view</h2><p style="margin:0 0 6px;color:var(--muted)">See every group the way its Group Leader (availability) and Zoom Leader (reading) see it.</p>' +
+      '<button class="btn secondary small" type="button" id="openGroups">Open group view</button><div id="grpBox"></div></section>';
     h += '<section class="card"><h2>Devotees</h2><p style="margin:0 0 6px;color:var(--muted)">Add a devotee, change a group, or mark someone inactive.</p>' +
       '<button class="btn secondary small" type="button" id="openDev">Open devotee list</button><div id="devBox"></div></section>';
     h += '<section class="card"><h2>Leaders\' PINs</h2><p style="margin:0 0 6px;color:var(--muted)">Every Group Leader and Zoom Leader has a personal PIN. Issue a first PIN here and send it privately. The leader then chooses their own.</p>' +
@@ -913,6 +934,7 @@
     $('adminPanel').innerHTML = h;
     if (devData) renderDevotees();
     if (leadData) renderLeaderPins();
+    if (grpData) renderGroupView();
   }
 
   $('adminPanel').addEventListener('click', function (e) {
@@ -927,10 +949,108 @@
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
       return;
     }
-    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
+    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
     if (e.target.id === 'openDev') { loadDevotees(e.target); return; }
     var tg = e.target.closest('[data-tog]');
     if (tg) { toggleActive(tg); return; }
+  });
+
+  /* --- group view (read only) --- */
+  var grpData = null, grpFilter = 'all', grpEdit = false;
+  function loadGroupView(no, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Please wait...'; }
+    return api({ action: 'adminGroups', pin: pin, no: no }).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Refresh group view'; }
+      if (!r.ok) { say($('grpBox'), adminErr(r), true); return; }
+      grpData = r; renderGroupView();
+    }).catch(function () { if (btn) { btn.disabled = false; btn.textContent = 'Open group view'; } say($('grpBox'), NET, true); });
+  }
+  function gvMember(m, ek) {
+    var dd = daysTo(ek.date);
+    var canAway = grpEdit && dd >= 0 && m.status !== 'Done';
+    var canRead = grpEdit && ek.generated && dd <= 0 && m.hasRow && m.status !== 'Unavailable';
+    var avail = canAway
+      ? '<button type="button" class="tog ' + (m.away ? 'away' : 'on') + '" data-gv-away="' + esc(m.id) + '">' + (m.away ? 'Not available' : 'Available') + '</button>'
+      : (m.away ? '<span class="chip wait">Not available</span>' : '<span class="chip ready">Available</span>');
+    var read;
+    if (canRead) read = '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-gv-read="' + esc(m.id) + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</button>';
+    else if (m.away && !m.hasRow) read = '<span class="chip grey">Left out of allotment</span>';
+    else if (!m.hasRow) read = '<span class="chip grey">' + (ek.generated ? 'No portion' : 'Portions not created') + '</span>';
+    else if (m.status === 'Done') read = '<span class="chip ready">Read \u2713</span>';
+    else if (m.status === 'Unavailable') read = '<span class="chip wait">Cannot read</span>';
+    else read = '<span class="chip grey">Not read yet</span>';
+    return '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + '</p>' +
+      (m.hasRow ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') +
+      '<div class="row2">' + avail + read + '<span class="saved" role="status"></span></div>' +
+      (m.away && m.awayBy ? '<span class="by">Not available, marked by ' + esc(m.awayBy) + '</span>' : '') +
+      (m.doneAt ? '<span class="by">Read, marked ' + esc(m.doneAt) + '</span>' : '') + '</div>';
+  }
+  function renderGroupView() {
+    var r = grpData, openG = {};
+    document.querySelectorAll('#grpBox details[open]').forEach(function (d) { openG[d.getAttribute('data-g')] = 1; });
+    if (!r.ek) { $('grpBox').innerHTML = '<p>No Ekadashi found in the sheet.</p>'; return; }
+    var h = '<label for="gvEk" style="margin-top:14px">Ekadashi</label><select id="gvEk">' +
+      r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + (e.generated ? '' : ' (not created)') + '</option>'; }).join('') + '</select>' +
+      '<label for="gvGrp" style="margin-top:12px">Group</label><select id="gvGrp"><option value="all"' + (grpFilter === 'all' ? ' selected' : '') + '>All groups</option>' +
+      r.groups.map(function (g) { return '<option value="' + esc(g.group) + '"' + (String(g.group) === grpFilter ? ' selected' : '') + '>' + (g.group === 'Unassigned' ? 'No group' : 'Group ' + esc(g.group)) + '</option>'; }).join('') + '</select>';
+    h += '<button class="btn small ' + (grpEdit ? '' : 'secondary') + '" style="margin-top:14px" type="button" id="gvEditBtn" aria-pressed="' + grpEdit + '">Edit on behalf of leaders: ' + (grpEdit ? 'On' : 'Off') + '</button>';
+    if (grpEdit) h += '<p style="margin:10px 0 0;color:var(--muted);font-size:17px">Changes are saved straight away and recorded as "Coordinator". Availability can be changed until the day of the Ekadashi. Reading can be marked from the day of the Ekadashi.</p>';
+    var shown = r.groups.filter(function (g) { return grpFilter === 'all' || String(g.group) === grpFilter; });
+    var tot = 0, rd = 0, aw = 0;
+    shown.forEach(function (g) { tot += g.members.length; g.members.forEach(function (m) { if (m.status === 'Done') rd++; if (m.away) aw++; }); });
+    h += '<p style="margin:14px 0 4px"><strong>' + tot + '</strong> devotees &middot; <strong>' + rd + '</strong> read &middot; <strong>' + aw + '</strong> not available</p>';
+    shown.forEach(function (g) {
+      var read = g.members.filter(function (m) { return m.status === 'Done'; }).length, away = g.members.filter(function (m) { return m.away; }).length;
+      var pend = g.members.filter(function (m) { return m.status === 'Pending'; }).length;
+      h += '<details data-g="' + esc(g.group) + '"' + (grpFilter !== 'all' || openG[String(g.group)] ? ' open' : '') + '><summary>' + (g.group === 'Unassigned' ? 'No group' : 'Group ' + esc(g.group)) +
+        '<small>Group Leader: ' + esc(g.leader || 'not set') + ' &middot; Zoom Leader: ' + esc(g.zoomLeader || 'not set') + '</small>' +
+        '<small>' + g.members.length + ' devotees &middot; ' + read + ' read &middot; ' + away + ' not available</small></summary>' +
+        (grpEdit && r.ek.generated && daysTo(r.ek.date) <= 0 && pend ? '<button class="btn small" style="margin:6px 0 4px" type="button" data-gv-all="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
+        g.members.map(function (m) { return gvMember(m, r.ek); }).join('') + '</details>';
+    });
+    $('grpBox').innerHTML = h;
+  }
+  $('adminPanel').addEventListener('click', function (e) { if (e.target.id === 'openGroups') loadGroupView(null, e.target); });
+  function gvFind(id) { var f = null; grpData.groups.forEach(function (g) { g.members.forEach(function (m) { if (m.id === id) f = m; }); }); return f; }
+  function gvFlash(id, text, bad) {
+    var el = document.querySelector('#grpBox .dev[data-mid="' + id + '"] .saved');
+    if (el) { el.textContent = text; el.style.color = bad ? 'var(--bad)' : 'var(--ok)'; }
+  }
+  function gvRedraw(id, msg) { var y = window.scrollY; renderGroupView(); window.scrollTo(0, y); if (id) gvFlash(id, msg || 'Saved'); }
+  $('adminPanel').addEventListener('click', function (e) {
+    if (!grpData) return;
+    if (e.target.id === 'gvEditBtn') { grpEdit = !grpEdit; renderGroupView(); return; }
+    var aw = e.target.closest('[data-gv-away]'), rd = e.target.closest('[data-gv-read]'), al = e.target.closest('[data-gv-all]');
+    if (aw) {
+      var m = gvFind(aw.getAttribute('data-gv-away')), want = !m.away; aw.disabled = true;
+      api({ action: 'adminSetAvailability', pin: pin, no: grpData.ek.no, id: m.id, away: want }).then(function (r) {
+        if (!r.ok) { aw.disabled = false; gvFlash(m.id, adminErr(r), true); return; }
+        m.away = want; m.awayBy = want ? 'Coordinator' : '';
+        if (grpData.ek.generated && m.hasRow) m.status = want ? 'Unavailable' : 'Pending';
+        gvRedraw(m.id);
+      }).catch(function () { aw.disabled = false; gvFlash(m.id, NET, true); });
+    } else if (rd) {
+      var m2 = gvFind(rd.getAttribute('data-gv-read')), st = m2.status === 'Done' ? 'Pending' : 'Done'; rd.disabled = true;
+      api({ action: 'adminSetRead', pin: pin, no: grpData.ek.no, status: st, ids: [m2.id] }).then(function (r) {
+        if (!r.ok) { rd.disabled = false; gvFlash(m2.id, adminErr(r), true); return; }
+        m2.status = st; m2.doneAt = st === 'Done' ? 'just now (Coordinator)' : '';
+        gvRedraw(m2.id);
+      }).catch(function () { rd.disabled = false; gvFlash(m2.id, NET, true); });
+    } else if (al) {
+      var gno = al.getAttribute('data-gv-all'), grp = grpData.groups.filter(function (g) { return String(g.group) === gno; })[0];
+      var ids = grp.members.filter(function (m3) { return m3.status === 'Pending'; }).map(function (m3) { return m3.id; });
+      if (!confirm('Mark all ' + ids.length + ' remaining devotees of ' + (gno === 'Unassigned' ? 'this list' : 'group ' + gno) + ' as having read?')) return;
+      al.disabled = true; al.textContent = 'Please wait...';
+      api({ action: 'adminSetRead', pin: pin, no: grpData.ek.no, status: 'Done', ids: ids }).then(function (r) {
+        if (!r.ok) { al.disabled = false; al.textContent = 'Mark everyone as read'; alert(adminErr(r)); return; }
+        grp.members.forEach(function (m3) { if (ids.indexOf(m3.id) >= 0) { m3.status = 'Done'; m3.doneAt = 'just now (Coordinator)'; } });
+        gvRedraw();
+      }).catch(function () { al.disabled = false; al.textContent = 'Mark everyone as read'; alert(NET); });
+    }
+  });
+  $('adminPanel').addEventListener('change', function (e) {
+    if (e.target.id === 'gvEk') loadGroupView(+e.target.value, null);
+    if (e.target.id === 'gvGrp') { grpFilter = e.target.value; renderGroupView(); }
   });
 
   /* --- leaders' PINs --- */
