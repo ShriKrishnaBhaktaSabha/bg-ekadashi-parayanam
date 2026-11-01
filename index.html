@@ -133,7 +133,8 @@
   #lkEk, #zlEk { font-size: calc(19px * var(--s)); padding: 10px 12px; }
   .tog.off { background: #F3F3F3; color: #666; }
   .tog.away { background: #FFF4D6; border-color: #EBCB75; color: #6b4b00; }
-  footer .link { display: block; margin: 0 auto; }
+  .caption { margin: 0 0 2px; text-align: center; color: var(--muted); font-size: calc(17px * var(--s)); }
+  .btn.foot { min-height: 52px; font-size: calc(19px * var(--s)); margin-top: 10px; }
   .saved { font-size: calc(16px * var(--s)); color: var(--ok); }
   form.add label { margin-top: 10px; font-size: calc(18px * var(--s)); }
   footer { margin-top: 28px; text-align: center; }
@@ -226,9 +227,10 @@
   </section>
 
   <footer>
-    <button class="link" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
-    <button class="link" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
-    <button class="link" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
+    <p class="caption" id="leadersCaption" data-i18n="leadersCaption">For leaders and coordinators</p>
+    <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
+    <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
+    <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
   </footer>
 </div>
 
@@ -296,6 +298,7 @@
     "markedAway": "You are marked as not available for this Ekadashi ({ek}). If this is a mistake, please contact {contact}.",
     "leaderLogin": "Leader login",
     "zlLogin": "Zoom Leader login",
+    "leadersCaption": "For leaders and coordinators",
     "coordFallback": "the sabha coordinator"
   },
   "ta": {
@@ -343,6 +346,7 @@
     "markedAway": "இந்த ஏகாதசிக்கு ({ek}) நீங்கள் வர இயலாதவராகக் குறிக்கப்பட்டுள்ளீர்கள். இது தவறு என்றால், தயவுசெய்து {contact} அவர்களைத் தொடர்பு கொள்ளவும்.",
     "leaderLogin": "தலைவர் உள்நுழைவு",
     "zlLogin": "ஜூம் பொறுப்பாளர் உள்நுழைவு",
+    "leadersCaption": "தலைவர்கள் மற்றும் ஒருங்கிணைப்பாளர்களுக்கு",
     "coordFallback": "சபா ஒருங்கிணைப்பாளர்"
   },
   "te": {
@@ -390,6 +394,7 @@
     "markedAway": "ఈ ఏకాదశికి ({ek}) మీరు అందుబాటులో లేనట్లు నమోదు చేయబడింది. ఇది పొరపాటైతే, దయచేసి {contact} గారిని సంప్రదించండి.",
     "leaderLogin": "లీడర్ లాగిన్",
     "zlLogin": "జూమ్ లీడర్ లాగిన్",
+    "leadersCaption": "లీడర్లు మరియు సమన్వయకర్తల కోసం",
     "coordFallback": "సభ సమన్వయకర్త"
   },
   "kn": {
@@ -437,6 +442,7 @@
     "markedAway": "ಈ ಏಕಾದಶಿಗೆ ({ek}) ನೀವು ಲಭ್ಯವಿಲ್ಲ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ. ಇದು ತಪ್ಪಾಗಿದ್ದರೆ, ದಯವಿಟ್ಟು {contact} ಅವರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
     "leaderLogin": "ನಾಯಕರ ಲಾಗಿನ್",
     "zlLogin": "ಜೂಮ್ ನಾಯಕರ ಲಾಗಿನ್",
+    "leadersCaption": "ನಾಯಕರು ಮತ್ತು ಸಂಯೋಜಕರಿಗಾಗಿ",
     "coordFallback": "ಸಭೆಯ ಸಂಯೋಜಕರು"
   },
   "hi": {
@@ -484,6 +490,7 @@
     "markedAway": "इस एकादशी ({ek}) के लिए आपको अनुपलब्ध दर्ज किया गया है। यदि यह गलती है, तो कृपया {contact} से संपर्क करें।",
     "leaderLogin": "लीडर लॉगिन",
     "zlLogin": "ज़ूम लीडर लॉगिन",
+    "leadersCaption": "लीडर और समन्वयकों के लिए",
     "coordFallback": "सभा के समन्वयक"
   }
 };
@@ -612,7 +619,7 @@
     $('sizeBtn').textContent = large ? 'A\u2212' : 'A+';
     $('sizeBtn').setAttribute('aria-label', large ? t('sizeDown') : t('sizeUp'));
     $('sizeBtn').title = large ? t('sizeDown') : t('sizeUp');
-    $('leaderLink').hidden = view !== 'devotee'; $('zlLink').hidden = view !== 'devotee';
+    $('leaderLink').hidden = view !== 'devotee'; $('zlLink').hidden = view !== 'devotee'; $('leadersCaption').hidden = view !== 'devotee';
     document.title = t('title');
   }
   function buildLangs() {
