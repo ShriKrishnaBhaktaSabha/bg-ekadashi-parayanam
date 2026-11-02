@@ -131,6 +131,8 @@
   .tog { font: inherit; font-size: calc(17px * var(--s)); font-weight: 600; min-height: 46px; padding: 4px 16px; border-radius: 999px; border: 2px solid var(--line); background: #fff; cursor: pointer; }
   .tog.on { background: #E3F4EA; border-color: #8CCBA6; color: #12512f; }
   #lkEk, #zlEk { font-size: calc(19px * var(--s)); padding: 10px 12px; }
+  .sharebox { margin: 10px 0 4px; }
+  .sharebox .btn { margin-top: 10px; }
   .tog.off { background: #F3F3F3; color: #666; }
   .tog.away { background: #FFF4D6; border-color: #EBCB75; color: #6b4b00; }
   .caption { margin: 0 0 2px; text-align: center; color: var(--muted); font-size: calc(17px * var(--s)); }
@@ -719,7 +721,8 @@
           var mem = [['BG-001', 'Lalitha Seetharaman', null, 'Chapter 5, shlokas 1-6'], ['BG-020', 'Kamala R', null, 'Chapter 5, shlokas 7-12'], ['BG-021', 'Usha G', null, 'Chapter 5, shlokas 13-18'], ['BG-022', 'Sridevi M Mehta', 'Done', 'Chapter 5, shlokas 19-24']];
           var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2], portion: m[3], count: 6 }; }) }];
           if (lkState === 'admin') lg.push({ group: 4, members: [{ id: 'BG-040', name: 'Ranjani Ramesh', away: !!demo.away[cur.no + 'BG-040'], status: null }, { id: 'BG-041', name: 'Rajeswari Shivashanker', away: false, status: null }] });
-          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Coordinator' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], admin: lkState === 'admin' }, ekadashis: eks, ek: cur, groups: lg });
+          lg[0].practice = 'Saturday, 7:00 PM IST';
+          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Coordinator' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], admin: lkState === 'admin' }, ekadashis: eks, ek: cur, zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
         }
         if (p.action === 'leaderSet') { demo.away[p.no + p.id] = p.away; return res({ ok: true }); }
         if (p.action === 'adminGenerate') return res({ ok: true, message: 'Allotment ready for Ekadashi 3.\nDevotees: 220   Shlokas allotted: 759' });
@@ -1240,6 +1243,40 @@
       '<button class="btn" type="submit">Save my PIN</button><div class="pinmsg" role="status" aria-live="polite"></div></form></section>';
   }
   function batchTag(m) { return m.batch && !/not stated/i.test(m.batch) ? ' <small>&middot; ' + esc(m.batch) + '</small>' : ''; }
+  // The message a Group Leader can send to the group on WhatsApp
+  function shareText(g) {
+    var r = lkData, ek = r.ek, L = [], n = 0, away = [];
+    L.push('\uD83D\uDE4F *Hari Om* \uD83D\uDE4F');
+    L.push('*Group ' + g.group + ': ' + ek.name + '*');
+    L.push(fmtDateEn(ek.date));
+    L.push('');
+    L.push('*Shloka allocation*');
+    g.members.forEach(function (m) {
+      if (m.away) { away.push(m.name); return; }
+      if (!m.portion) return;
+      n++; L.push(n + '. ' + m.name + ': ' + m.portion + ' (' + m.count + ' shlokas)');
+    });
+    if (away.length) { L.push(''); L.push('Not available this time: ' + away.join(', ')); }
+    if (g.practice) { L.push(''); L.push('Practice session: ' + g.practice); }
+    var z = r.zoom || {};
+    if (z.link) { L.push(''); L.push('*Zoom*'); L.push(z.link); if (z.id) L.push('Meeting ID: ' + z.id); if (z.passcode) L.push('Passcode: ' + z.passcode); }
+    L.push(''); L.push('Please read your portion. Hare Krishna \uD83D\uDE4F');
+    return L.join('\n');
+  }
+  function shareBlock(g) {
+    if (!lkData.ek.generated || !g.members.some(function (m) { return m.portion && !m.away; })) return '';
+    var url = 'https://wa.me/?text=' + encodeURIComponent(shareText(g));
+    return '<div class="sharebox">' +
+      (url.length < 4500 ? '<a class="btn" target="_blank" rel="noopener" href="' + url + '">Share this group\'s allocation on WhatsApp</a>' : '') +
+      '<button class="btn secondary" type="button" data-copy="' + esc(g.group) + '">Copy the message</button><span class="saved" role="status" id="cp' + esc(g.group) + '"></span></div>';
+  }
+  function copyText(text, done) {
+    function fallback() {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(true); } catch (e) { done(false); } document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
+  }
   function memberRow(m) {
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
@@ -1265,7 +1302,7 @@
       r.groups.filter(function (g) { return lkGrp === 'all' || String(g.group) === lkGrp; }).forEach(function (g) {
         var away = g.members.filter(function (m) { return m.away; }).length;
         h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p style="margin:0 0 6px;color:var(--muted)">' + g.members.length + ' active devotees' +
-          (away ? ', ' + away + ' not available' : '') + '</p><div>' + g.members.map(memberRow).join('') + '</div></section>';
+          (away ? ', ' + away + ' not available' : '') + '</p>' + shareBlock(g) + '<div>' + g.members.map(memberRow).join('') + '</div></section>';
       });
     }
     if (!r.leader.admin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="changePinForm" novalidate>' +
@@ -1287,6 +1324,12 @@
   }
   $('leaderPanel').addEventListener('click', function (e) {
     if (e.target.id === 'lkOut') { lk = null; lkData = null; lkGrp = 'all'; $('leaderPanel').hidden = true; $('leaderLogin').hidden = false; $('lkPin').value = ''; return; }
+    var cp = e.target.closest('[data-copy]');
+    if (cp) {
+      var gno = cp.getAttribute('data-copy'), gg = lkData.groups.filter(function (x) { return String(x.group) === gno; })[0], flash = $('cp' + gno);
+      copyText(shareText(gg), function (ok) { if (flash) { flash.textContent = ok ? 'Copied. Paste it in your group.' : 'Could not copy. Please use the WhatsApp button.'; flash.style.color = ok ? 'var(--ok)' : 'var(--bad)'; } });
+      return;
+    }
     var b = e.target.closest('[data-away]'); if (!b) return;
     var id = b.getAttribute('data-away'), m = findMember(id), want = !m.away;
     b.disabled = true;
