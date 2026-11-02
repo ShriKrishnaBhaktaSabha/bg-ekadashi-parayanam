@@ -693,7 +693,9 @@
           var zm = [['BG-001', 'A. Usharani', 'Chapter 10, shlokas 39-42', 4], ['BG-007', 'Anagha Anil Tekale', 'Chapter 10, shlokas 43-46', 4], ['BG-012', 'Anuradha Suresh', 'Chapter 10, shlokas 47-49', 3], ['BG-016', 'B. Kamakoti', 'Chapter 11, shlokas 1-4', 4], ['BG-044', 'Jagannathan T V', 'Chapter 11, shlokas 5-7', 3]];
           var zg = [{ group: 7, members: zm.map(function (m, i) { return { id: m[0], name: m[1], portion: m[2], count: m[3], status: i === 4 ? 'Unavailable' : (demo.zl[m[0]] || 'Pending') }; }) }];
           if (zs === 'admin') zg.push({ group: 8, members: [{ id: 'BG-090', name: 'Ramya Murugesh', portion: 'Chapter 13, shlokas 1-4', count: 4, status: demo.zl['BG-090'] || 'Pending' }] });
-          return res({ ok: true, leader: { name: zs === 'admin' ? 'Coordinator' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], admin: zs === 'admin' }, ekadashis: [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi' }], ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi' }, groups: zg });
+          var zEks = [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', canMark: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', canMark: false }];
+          var zE = zEks.filter(function (e) { return e.no === Number(p.no); })[0] || zEks[0];
+          return res({ ok: true, leader: { name: zs === 'admin' ? 'Coordinator' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], admin: zs === 'admin' }, ekadashis: zEks, ek: zE, groups: zg });
         }
         if (p.action === 'adminSetAvailability' || p.action === 'adminSetRead') return res({ ok: true, changed: 1, skipped: 0 });
         if (p.action === 'adminGroups') {
@@ -714,8 +716,8 @@
         if (p.action === 'leaderOverview') {
           var eks = [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }];
           var cur = eks.filter(function (e) { return e.no === Number(p.no); })[0] || eks[0];
-          var mem = [['BG-001', 'Lalitha Seetharaman', null], ['BG-020', 'Kamala R', null], ['BG-021', 'Usha G', null], ['BG-022', 'Sridevi M Mehta', 'Done']];
-          var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2] }; }) }];
+          var mem = [['BG-001', 'Lalitha Seetharaman', null, 'Chapter 5, shlokas 1-6'], ['BG-020', 'Kamala R', null, 'Chapter 5, shlokas 7-12'], ['BG-021', 'Usha G', null, 'Chapter 5, shlokas 13-18'], ['BG-022', 'Sridevi M Mehta', 'Done', 'Chapter 5, shlokas 19-24']];
+          var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2], portion: m[3], count: 6 }; }) }];
           if (lkState === 'admin') lg.push({ group: 4, members: [{ id: 'BG-040', name: 'Ranjani Ramesh', away: !!demo.away[cur.no + 'BG-040'], status: null }, { id: 'BG-041', name: 'Rajeswari Shivashanker', away: false, status: null }] });
           return res({ ok: true, leader: { name: lkState === 'admin' ? 'Coordinator' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], admin: lkState === 'admin' }, ekadashis: eks, ek: cur, groups: lg });
         }
@@ -1239,7 +1241,8 @@
   }
   function batchTag(m) { return m.batch && !/not stated/i.test(m.batch) ? ' <small>&middot; ' + esc(m.batch) + '</small>' : ''; }
   function memberRow(m) {
-    var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p><div class="ctl">';
+    var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
+      (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
     if (m.status === 'Done') h += '<span class="chip ready">Already read</span>';
     else h += '<button type="button" class="tog ' + (m.away ? 'away' : 'on') + '" data-away="' + esc(m.id) + '" aria-pressed="' + (m.away ? 'true' : 'false') + '">' + (m.away ? 'Not available' : 'Available') + '</button>';
     return h + '<span class="saved" role="status"></span></div></div>';
@@ -1340,9 +1343,10 @@
       zData = r; renderZl();
     }).catch(function () { btn.disabled = false; btn.textContent = 'Sign in'; say($('zlMsg'), NET, true); });
   }
-  function zRow(m) {
+  function zRow(m, canMark) {
     var h = '<div class="dev" data-zid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p><small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small><div class="ctl">';
     if (m.status === 'Unavailable') h += '<span class="chip wait">Not available</span>';
+    else if (!canMark) h += '<span class="chip grey">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</span>';
     else h += '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-read="' + esc(m.id) + '" aria-pressed="' + (m.status === 'Done' ? 'true' : 'false') + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</button>';
     return h + '<span class="saved" role="status"></span></div></div>';
   }
@@ -1357,15 +1361,17 @@
     } else {
       h += '<section class="card"><label for="zlEk">Ekadashi</label><select id="zlEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
-        '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">After the session, tap a name to mark that devotee as having read. Tap again to undo.</p></section>';
+        '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.canMark
+          ? 'After the session, tap a name to mark that devotee as having read. Tap again to undo.'
+          : 'You can check the portions now. Reading can be marked from the day of the Ekadashi.') + '</p></section>';
       if (r.groups.length > 1) h += groupSelHtml('zlGrpSel', r.groups, zGrp);
       r.groups.filter(function (g) { return zGrp === 'all' || String(g.group) === zGrp; }).forEach(function (g) {
         var done = g.members.filter(function (m) { return m.status === 'Done'; }).length, pending = g.members.filter(function (m) { return m.status === 'Pending'; }).length;
         var pct = g.members.length ? Math.round(100 * done / g.members.length) : 0;
         h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p class="stat">' + done + ' of ' + g.members.length + ' have read</p>' +
           '<div class="meter" role="img" aria-label="' + pct + ' percent have read"><span style="width:' + pct + '%"></span></div>' +
-          (pending ? '<button class="btn" type="button" data-allgrp="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
-          '<div style="margin-top:8px">' + g.members.map(zRow).join('') + '</div></section>';
+          (pending && r.ek.canMark ? '<button class="btn" type="button" data-allgrp="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
+          '<div style="margin-top:8px">' + g.members.map(function (m) { return zRow(m, r.ek.canMark); }).join('') + '</div></section>';
       });
     }
     if (!r.leader.admin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="zChangePin" novalidate>' +
