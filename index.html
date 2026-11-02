@@ -669,7 +669,7 @@
         if (p.action === 'adminStatus') {
           if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
           return res({ ok: true,
-            upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }],
+            upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
             progress: { ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' }, total: 220, done: 128, unavailableCount: 2,
               groups: [{ group: '1', total: 20, done: 14, unavailable: 0 }, { group: '2', total: 20, done: 9, unavailable: 1 }, { group: '3', total: 20, done: 17, unavailable: 1 }],
               leftOut: [{ name: 'Meena S', group: '2' }],
@@ -725,6 +725,7 @@
           return res({ ok: true, leader: { name: lkState === 'admin' ? 'Coordinator' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], admin: lkState === 'admin' }, ekadashis: eks, ek: cur, zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
         }
         if (p.action === 'leaderSet') { demo.away[p.no + p.id] = p.away; return res({ ok: true }); }
+        if (p.action === 'adminRemoveAllotment') return res({ ok: true, removed: 210 });
         if (p.action === 'adminGenerate') return res({ ok: true, message: 'Allotment ready for Ekadashi 3.\nDevotees: 220   Shlokas allotted: 759' });
         if (p.action === 'adminDevotees') return res({ ok: true, groups: [1, 2, 3], devotees: demo.devs });
         if (p.action === 'adminUpdateDevotee') {
@@ -748,6 +749,9 @@
     no_such_ekadashi: 'That Ekadashi was not found in the sheet.',
     no_such_devotee: 'That devotee was not found.',
     no_leader: 'That leader was not found.',
+    has_reading: 'Someone is already marked as having read, so this cannot be removed.',
+    not_too_early: 'This allotment was created at the right time, so it cannot be removed here. Use Create again instead.',
+    not_created: 'No allotment has been created for this Ekadashi.',
     locked: 'Too many wrong attempts. Please try again after 15 minutes.',
     past_ekadashi: 'This Ekadashi has already passed, so availability can no longer be changed.',
     already_done: 'This devotee is marked as read. Mark them as not read first.',
@@ -757,6 +761,7 @@
     bad_group: 'The group must be a number.'
   };
   function adminErr(r) {
+    if (r && r.error === 'too_early') return 'This allotment can be created only from ' + fmtDateEn(r.opens) + ', after ' + r.prevName + ' has come.';
     if (r && ADMIN_ERR[r.error]) return ADMIN_ERR[r.error];
     if (r && r.error === 'server_error') return 'Something went wrong' + (r.detail ? ': ' + esc(r.detail) : '.');
     return 'Something went wrong. Please try again.';
@@ -900,9 +905,21 @@
     h += '<section class="card"><h2>Allotments</h2><p style="margin:0 0 6px;color:var(--muted)">Create the portions for an Ekadashi.</p>';
     if (!r.upcoming.length) h += '<p>No upcoming Ekadashi in the sheet.</p>';
     r.upcoming.forEach(function (u) {
-      h += '<div class="ek-row"><div><p><strong>' + esc(u.name) + '</strong></p><p style="font-size:18px;color:var(--muted)">' + esc(fmtDateEn(u.date)) + '</p>' +
-        '<span class="chip ' + (u.generated ? 'ready' : 'wait') + '">' + (u.generated ? 'Ready' : 'Not created yet') + '</span></div>' +
-        '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button></div>';
+      var open = u.canCreate !== false, chip, btn, note = '';
+      if (open) {
+        chip = '<span class="chip ' + (u.generated ? 'ready' : 'wait') + '">' + (u.generated ? 'Ready' : 'Not created yet') + '</span>';
+        btn = '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
+      } else if (u.generated) {
+        chip = '<span class="chip wait">Created too early</span>';
+        btn = '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button>';
+        note = 'This can be created only from ' + fmtDateEn(u.opens) + ', after ' + u.prevName + '. Remove it now and create it again then.';
+      } else {
+        chip = '<span class="chip grey">Opens ' + shortDate(u.opens) + '</span>';
+        btn = '<button class="btn small" type="button" disabled>Create allotment</button>';
+        note = 'Can be created from ' + fmtDateEn(u.opens) + ', after ' + u.prevName + '.';
+      }
+      h += '<div class="ek-row"><div><p><strong>' + esc(u.name) + '</strong></p><p style="font-size:18px;color:var(--muted)">' + esc(fmtDateEn(u.date)) + '</p>' + chip +
+        (note ? '<p style="font-size:16px;color:var(--muted);margin-top:6px;max-width:34ch">' + esc(note) + '</p>' : '') + '</div>' + btn + '</div>';
     });
     h += '<div id="genMsg" role="status" aria-live="polite"></div></section>';
 
@@ -954,6 +971,16 @@
   }
 
   $('adminPanel').addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-remove]');
+    if (rm) {
+      if (!confirm('This removes the portions created for this Ekadashi, so leaders and devotees can no longer see them. You can create them again once it opens. Continue?')) return;
+      rm.disabled = true; var oldT = rm.textContent; rm.textContent = 'Please wait...';
+      api({ action: 'adminRemoveAllotment', pin: pin, no: +rm.getAttribute('data-remove') }).then(function (res) {
+        if (res.ok) { loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, 'Allotment removed. You can create it again once it opens.'); }); }
+        else { rm.disabled = false; rm.textContent = oldT; say($('genMsg'), adminErr(res), true); }
+      }).catch(function () { rm.disabled = false; rm.textContent = oldT; say($('genMsg'), NET, true); });
+      return;
+    }
     var g = e.target.closest('[data-gen]');
     if (g) {
       var again = g.getAttribute('data-again') === '1';
