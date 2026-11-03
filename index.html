@@ -206,7 +206,7 @@
         <button class="btn" type="submit" id="lkBtn">Sign in</button>
       </form>
       <div id="lkMsg" role="status" aria-live="polite"></div>
-      <p style="margin:14px 0 0;color:var(--muted);font-size:17px">First time? Ask the coordinator for your PIN. You will then choose your own. Forgot it? Ask the coordinator for a new one. Zoom Leaders: please use <em>Zoom Leader login</em> at the bottom of the page. Coordinators: type the coordinator PIN, and leave the number empty, to open all groups.</p>
+      <p style="margin:14px 0 0;color:var(--muted);font-size:17px">First time? Ask the coordinator for your PIN. You will then choose your own. Forgot it? Ask the coordinator for a new one. Zoom Leaders: please use <em>Zoom Leader login</em> at the bottom of the page. Group Leader (all groups) login: leave the number empty and type that login\'s PIN.</p>
     </section>
     <div id="leaderPanel" hidden></div>
   </section>
@@ -223,7 +223,7 @@
         <button class="btn" type="submit" id="zlBtn">Sign in</button>
       </form>
       <div id="zlMsg" role="status" aria-live="polite"></div>
-      <p style="margin:14px 0 0;color:var(--muted);font-size:17px">First time? Ask the coordinator for your PIN. You will then choose your own. Forgot it? Ask the coordinator for a new one. Coordinators: type the coordinator PIN, and leave the number empty, to open all groups.</p>
+      <p style="margin:14px 0 0;color:var(--muted);font-size:17px">First time? Ask the coordinator for your PIN. You will then choose your own. Forgot it? Ask the coordinator for a new one. Zoom Leader (all groups) login: leave the number empty and type that login's PIN.</p>
     </section>
     <div id="zlPanel" hidden></div>
   </section>
@@ -667,8 +667,11 @@
         if (p.action === 'unavailable') { demo.status = 'Unavailable'; return res({ ok: true }); }
         if (p.action === 'undo') { demo.status = 'Pending'; return res({ ok: true }); }
         if (p.action === 'adminStatus') {
-          if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
-          return res({ ok: true,
+          var ar = p.pin === '1234' ? 'superadmin' : p.pin === '2222' ? 'coordinator' : null;
+          if (!ar) return res({ ok: false, error: 'wrong_pin' });
+          var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, access: true }
+            : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, access: false };
+          return res({ ok: true, role: ar, roleLabel: ar === 'superadmin' ? 'Super admin' : 'Coordinator', perms: pm,
             upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
             progress: { ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' }, total: 220, done: 128, unavailableCount: 2,
               groups: [{ group: '1', total: 20, done: 14, unavailable: 0 }, { group: '2', total: 20, done: 9, unavailable: 1 }, { group: '3', total: 20, done: 17, unavailable: 1 }],
@@ -678,9 +681,9 @@
               backups: [{ name: 'Backup Person One', phone: '9000000007', group: '3' }, { name: 'Backup Person Two', phone: '9000000008', group: '1' }] } });
         }
         if (p.action === 'leaderOverview' || p.action === 'leaderSet' || p.action === 'leaderChangePin') {
-          var lkState = p.leaderPin === '1234' ? 'admin' : (p.leaderPin === '123456' && !demo.lkPin) ? 'temp' : (demo.lkPin && p.leaderPin === demo.lkPin ? 'own' : null);
+          var lkState = (p.leaderPin === '1234' || p.leaderPin === '3333') ? 'admin' : (p.leaderPin === '123456' && !demo.lkPin) ? 'temp' : (demo.lkPin && p.leaderPin === demo.lkPin ? 'own' : null);
           if (!lkState || (lkState !== 'admin' && String(p.phone).replace(/\D/g, '').slice(-10) === '0000000000')) return res({ ok: false, error: 'wrong_login' });
-          if (lkState === 'admin' && p.action === 'leaderChangePin') return res({ ok: false, error: 'admin_pin' });
+          if (lkState === 'admin' && p.action === 'leaderChangePin') return res(p.leaderPin === '3333' ? { ok: true } : { ok: false, error: 'admin_pin' });
           if (p.action === 'leaderChangePin') {
             if (!p.newPin || p.newPin.length < 4 || p.newPin === p.leaderPin) return res({ ok: false, error: 'weak_pin' });
             demo.lkPin = p.newPin; return res({ ok: true });
@@ -688,7 +691,7 @@
           if (lkState === 'temp') return res(p.action === 'leaderSet' ? { ok: false, error: 'must_change_pin' } : { ok: true, mustChange: true, leader: { name: 'Rupa Mukherjee' } });
         }
         if (p.action === 'zlOverview' || p.action === 'zlSet') {
-          var zs = p.leaderPin === '1234' ? 'admin' : (p.leaderPin === '123456' && !demo.lkPin) ? 'temp' : (demo.lkPin && p.leaderPin === demo.lkPin ? 'own' : null);
+          var zs = (p.leaderPin === '1234' || p.leaderPin === '4444') ? 'admin' : (p.leaderPin === '123456' && !demo.lkPin) ? 'temp' : (demo.lkPin && p.leaderPin === demo.lkPin ? 'own' : null);
           if (!zs || (zs !== 'admin' && String(p.phone).replace(/\D/g, '').slice(-10) === '0000000000')) return res({ ok: false, error: 'wrong_login' });
           if (zs === 'temp') return res(p.action === 'zlSet' ? { ok: false, error: 'must_change_pin' } : { ok: true, mustChange: true, leader: { name: 'Uma Sankaran' } });
           if (p.action === 'zlSet') { (p.ids || []).forEach(function (id) { demo.zl[id] = p.status; }); return res({ ok: true, changed: (p.ids || []).length, skipped: 0 }); }
@@ -697,11 +700,14 @@
           if (zs === 'admin') zg.push({ group: 8, members: [{ id: 'BG-090', name: 'Ramya Murugesh', portion: 'Chapter 13, shlokas 1-4', count: 4, status: demo.zl['BG-090'] || 'Pending' }] });
           var zEks = [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', canMark: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', canMark: false }];
           var zE = zEks.filter(function (e) { return e.no === Number(p.no); })[0] || zEks[0];
-          return res({ ok: true, leader: { name: zs === 'admin' ? 'Coordinator' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], admin: zs === 'admin' }, ekadashis: zEks, ek: zE, groups: zg });
+          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: zE, groups: zg });
         }
+        if (p.action === 'adminAccess') return res(p.pin === '1234' ? { ok: true, accounts: [{ role: 'coordinator', label: 'Coordinator (limited access)', set: true }, { role: 'glall', label: 'Group Leader (all groups)', set: true }, { role: 'zlall', label: 'Zoom Leader (all groups)', set: false }] } : { ok: false, error: 'no_permission' });
+        if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
+        if (p.action === 'adminChangePin') return res(!p.newPin || p.newPin.length < 4 ? { ok: false, error: 'weak_pin' } : { ok: true });
         if (p.action === 'adminSetAvailability' || p.action === 'adminSetRead') return res({ ok: true, changed: 1, skipped: 0 });
         if (p.action === 'adminGroups') {
-          if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
+          if (p.pin !== '1234' && p.pin !== '2222') return res({ ok: false, error: 'wrong_pin' });
           var mk = function (id, name, portion, count, status, away, by) { return { id: id, name: name, away: away, awayBy: by || '', hasRow: !away || status === 'Unavailable', portion: portion, count: count, status: status, doneAt: status === 'Done' ? '31 Oct 2026 20:15 (Zoom Leader: Lalitha Ganesh)' : '' }; };
           return res({ ok: true, ekadashis: [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', generated: false }], ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true },
             groups: [
@@ -710,7 +716,7 @@
               { group: 3, leader: 'Smt. Madhavi Kotra', zoomLeader: '', members: [mk('BG-6', 'Nupur Karunakar', 'Chapter 3, shlokas 4-7', 4, 'Pending', false)] }] });
         }
         if (p.action === 'adminLeaders') {
-          if (p.pin !== '1234') return res({ ok: false, error: 'wrong_pin' });
+          if (p.pin !== '1234' && p.pin !== '2222') return res({ ok: false, error: 'wrong_pin' });
           return res({ ok: true, leaders: [{ id: 'BG-145', name: 'Rupa Mukherjee', phone: '9000000011', groups: [6], status: demo.lkPin ? 'own' : 'temporary' },
             { id: 'BG-192', name: 'Uma Sankaran', phone: '9000000012', groups: [7], status: 'none' }, { id: 'BG-136', name: 'Ranjani Ramesh', phone: '9000000013', groups: [4], status: 'none' }] });
         }
@@ -722,7 +728,7 @@
           var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2], portion: m[3], count: 6 }; }) }];
           if (lkState === 'admin') lg.push({ group: 4, members: [{ id: 'BG-040', name: 'Ranjani Ramesh', away: !!demo.away[cur.no + 'BG-040'], status: null }, { id: 'BG-041', name: 'Rajeswari Shivashanker', away: false, status: null }] });
           lg[0].practice = 'Saturday, 7:00 PM IST';
-          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Coordinator' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], admin: lkState === 'admin' }, ekadashis: eks, ek: cur, zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
+          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Group Leader (all groups)' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], all: lkState === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Group Leader (all groups)', canChangePin: p.leaderPin === '3333' }, ekadashis: eks, ek: cur, zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
         }
         if (p.action === 'leaderSet') { demo.away[p.no + p.id] = p.away; return res({ ok: true }); }
         if (p.action === 'adminRemoveAllotment') return res({ ok: true, removed: 210 });
@@ -749,6 +755,9 @@
     no_such_ekadashi: 'That Ekadashi was not found in the sheet.',
     no_such_devotee: 'That devotee was not found.',
     no_leader: 'That leader was not found.',
+    no_permission: 'Your login is not allowed to do this. Please ask the Super admin.',
+    pin_in_use: 'This PIN is already used by another login. Please choose a different one.',
+    weak_pin: 'Please choose a PIN of 4 to 12 characters that is different from your current PIN.',
     has_reading: 'Someone is already marked as having read, so this cannot be removed.',
     not_too_early: 'This allotment was created at the right time, so it cannot be removed here. Use Create again instead.',
     not_created: 'No allotment has been created for this Ekadashi.',
@@ -879,13 +888,14 @@
   }
   function fmtDateEn(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
 
+  var me = { role: '', label: '', perms: {} };
   function loadAdmin() {
     var btn = $('pinBtn'); btn.disabled = true; btn.textContent = 'Please wait...';
     return api({ action: 'adminStatus', pin: pin }).then(function (r) {
       btn.disabled = false; btn.textContent = 'Sign in';
       if (!r.ok) { say($('pinMsg'), adminErr(r), true); $('adminPanel').hidden = true; $('adminLogin').hidden = false; return; }
       $('adminLogin').hidden = true; $('adminPanel').hidden = false;
-      adminData = r; renderAdmin();
+      adminData = r; me = { role: r.role, label: r.roleLabel || 'Coordinator', perms: r.perms || {} }; renderAdmin();
     }).catch(function () { btn.disabled = false; btn.textContent = 'Sign in'; say($('pinMsg'), NET, true); });
   }
 
@@ -901,18 +911,23 @@
   }
 
   function renderAdmin() {
-    var r = adminData, h = '';
+    var r = adminData, h = '', P = me.perms;
+    h += '<section class="card"><p style="margin:0;color:var(--muted)">Signed in as <strong>' + esc(me.label) + '</strong></p></section>';
     h += '<section class="card"><h2>Allotments</h2><p style="margin:0 0 6px;color:var(--muted)">Create the portions for an Ekadashi.</p>';
     if (!r.upcoming.length) h += '<p>No upcoming Ekadashi in the sheet.</p>';
     r.upcoming.forEach(function (u) {
       var open = u.canCreate !== false, chip, btn, note = '';
       if (open) {
         chip = '<span class="chip ' + (u.generated ? 'ready' : 'wait') + '">' + (u.generated ? 'Ready' : 'Not created yet') + '</span>';
-        btn = '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
+        var allowed = u.generated ? P.recreate : P.create;
+        btn = allowed
+          ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
+          : '<button class="btn small secondary" type="button" disabled>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
+        if (!allowed) note = 'Your login is not allowed to ' + (u.generated ? 'create this again' : 'create allotments') + '. Ask the Super admin.';
       } else if (u.generated) {
         chip = '<span class="chip wait">Created too early</span>';
-        btn = '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button>';
-        note = 'This can be created only from ' + fmtDateEn(u.opens) + ', after ' + u.prevName + '. Remove it now and create it again then.';
+        btn = P.remove ? '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button>' : '';
+        note = 'This can be created only from ' + fmtDateEn(u.opens) + ', after ' + u.prevName + '. ' + (P.remove ? 'Remove it now and create it again then.' : 'Ask the Super admin to remove it.');
       } else {
         chip = '<span class="chip grey">Opens ' + shortDate(u.opens) + '</span>';
         btn = '<button class="btn small" type="button" disabled>Create allotment</button>';
@@ -959,15 +974,23 @@
 
     h += '<section class="card gv"><h2>Group view</h2><p style="margin:0 0 6px;color:var(--muted)">See every group the way its Group Leader (availability) and Zoom Leader (reading) see it.</p>' +
       '<button class="btn secondary small" type="button" id="openGroups">Open group view</button><div id="grpBox"></div></section>';
-    h += '<section class="card"><h2>Devotees</h2><p style="margin:0 0 6px;color:var(--muted)">Add a devotee, change a group, or mark someone inactive.</p>' +
+    if (P.manage_devotees) h += '<section class="card"><h2>Devotees</h2><p style="margin:0 0 6px;color:var(--muted)">Add a devotee, change a group, or mark someone inactive.</p>' +
       '<button class="btn secondary small" type="button" id="openDev">Open devotee list</button><div id="devBox"></div></section>';
-    h += '<section class="card"><h2>Leaders\' PINs</h2><p style="margin:0 0 6px;color:var(--muted)">Every Group Leader and Zoom Leader has a personal PIN. Issue a first PIN here and send it privately. The leader then chooses their own.</p>' +
+    if (P.leader_pins) h += '<section class="card"><h2>Leaders\' PINs</h2><p style="margin:0 0 6px;color:var(--muted)">Every Group Leader and Zoom Leader has a personal PIN. Issue a first PIN here and send it privately. The leader then chooses their own.</p>' +
       '<button class="btn secondary small" type="button" id="openLeaders">Show leaders</button><div id="leadBox"></div></section>';
+    if (P.access) h += '<section class="card"><h2>Logins and PINs</h2><p style="margin:0 0 6px;color:var(--muted)">Set the PIN of each login. What the Coordinator may do is chosen in the <strong>Permissions</strong> tab of the Google Sheet.</p>' +
+      '<button class="btn secondary small" type="button" id="openAccess">Show logins</button><div id="accBox"></div></section>';
+    h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="adminPinForm" novalidate>' +
+      '<label for="apC" style="margin-top:10px">Current PIN</label><input id="apC" name="cur" type="password" autocomplete="current-password">' +
+      '<label for="apN" style="margin-top:12px">New PIN (4 to 12 characters)</label><input id="apN" name="np" type="password" autocomplete="new-password">' +
+      '<label for="apN2" style="margin-top:12px">Type the new PIN again</label><input id="apN2" name="np2" type="password" autocomplete="new-password">' +
+      '<button class="btn" type="submit">Change my PIN</button><div class="pinmsg" role="status" aria-live="polite"></div></form></details></section>';
     h += '<p style="text-align:center"><button class="link" id="signOut" type="button">Sign out</button></p>';
     $('adminPanel').innerHTML = h;
     if (devData) renderDevotees();
     if (leadData) renderLeaderPins();
     if (grpData) renderGroupView();
+    if (accData) renderAccess();
   }
 
   $('adminPanel').addEventListener('click', function (e) {
@@ -992,10 +1015,54 @@
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
       return;
     }
-    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
+    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; accData = null; me = { role: '', label: '', perms: {} }; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
     if (e.target.id === 'openDev') { loadDevotees(e.target); return; }
     var tg = e.target.closest('[data-tog]');
     if (tg) { toggleActive(tg); return; }
+  });
+
+  /* --- Logins and PINs (Super admin) --- */
+  var accData = null;
+  function renderAccess() {
+    var h = '<ul class="list">' + accData.map(function (a) {
+      return '<li><span>' + esc(a.label) + '<small>' + (a.set ? 'PIN is set' : 'No PIN yet') + '</small></span></li>';
+    }).join('') + '</ul>' +
+      '<form id="accForm" novalidate><label for="accRole" style="margin-top:12px">Login</label><select id="accRole">' +
+      accData.map(function (a) { return '<option value="' + esc(a.role) + '">' + esc(a.label) + '</option>'; }).join('') + '</select>' +
+      '<label for="accPin" style="margin-top:12px">New PIN (4 to 12 characters)</label><input id="accPin" type="password" autocomplete="new-password">' +
+      '<button class="btn" type="submit">Save PIN</button><div id="accMsg" role="status" aria-live="polite"></div></form>' +
+      '<p style="color:var(--muted);font-size:17px;margin-top:12px">For the two all-groups logins, leave the WhatsApp number empty on the Leader login or the Zoom Leader login and type that login\'s PIN. Each PIN must be different.</p>';
+    $('accBox').innerHTML = h;
+  }
+  function loadAccess(btn) {
+    btn.disabled = true; btn.textContent = 'Please wait...';
+    api({ action: 'adminAccess', pin: pin }).then(function (r) {
+      btn.disabled = false; btn.textContent = 'Reload logins';
+      if (!r.ok) { say($('accBox'), adminErr(r), true); return; }
+      accData = r.accounts; renderAccess();
+    }).catch(function () { btn.disabled = false; btn.textContent = 'Show logins'; say($('accBox'), NET, true); });
+  }
+  $('adminPanel').addEventListener('click', function (e) { if (e.target.id === 'openAccess') loadAccess(e.target); });
+  $('adminPanel').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (e.target.id === 'accForm') {
+      var role = $('accRole').value, np = $('accPin').value, box = $('accMsg');
+      if (np.length < 4 || np.length > 12) { say(box, 'Please choose a PIN of 4 to 12 characters.', true); return; }
+      say(box, 'Please wait...');
+      api({ action: 'adminSetRolePin', pin: pin, role: role, newPin: np }).then(function (r) {
+        if (r.ok) { $('accPin').value = ''; accData.forEach(function (a) { if (a.role === role) a.set = true; }); renderAccess(); say($('accMsg'), 'PIN saved. Please share it privately.'); }
+        else say(box, adminErr(r), true);
+      }).catch(function () { say(box, NET, true); });
+    } else if (e.target.id === 'adminPinForm') {
+      var f = e.target, cur = f.querySelector('[name=cur]').value, n1 = f.querySelector('[name=np]').value, n2 = f.querySelector('[name=np2]').value, mb = f.querySelector('.pinmsg');
+      if (!cur) { say(mb, 'Please type your current PIN.', true); return; }
+      if (n1.length < 4 || n1.length > 12) { say(mb, 'Please choose a PIN of 4 to 12 characters.', true); return; }
+      if (n1 !== n2) { say(mb, 'The two PINs are not the same.', true); return; }
+      say(mb, 'Please wait...');
+      api({ action: 'adminChangePin', pin: cur, newPin: n1 }).then(function (r) {
+        if (r.ok) { pin = n1; f.reset(); say(mb, 'Your PIN has been changed.'); } else say(mb, adminErr(r), true);
+      }).catch(function () { say(mb, NET, true); });
+    }
   });
 
   /* --- group view (read only) --- */
@@ -1010,8 +1077,8 @@
   }
   function gvMember(m, ek) {
     var dd = daysTo(ek.date);
-    var canAway = grpEdit && dd >= 0 && m.status !== 'Done';
-    var canRead = grpEdit && ek.generated && dd <= 0 && m.hasRow && m.status !== 'Unavailable';
+    var canAway = grpEdit && me.perms.mark_availability && dd >= 0 && m.status !== 'Done';
+    var canRead = grpEdit && me.perms.mark_reading && ek.generated && dd <= 0 && m.hasRow && m.status !== 'Unavailable';
     var avail = canAway
       ? '<button type="button" class="tog ' + (m.away ? 'away' : 'on') + '" data-gv-away="' + esc(m.id) + '">' + (m.away ? 'Not available' : 'Available') + '</button>'
       : (m.away ? '<span class="chip wait">Not available</span>' : '<span class="chip ready">Available</span>');
@@ -1036,7 +1103,7 @@
       r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + (e.generated ? '' : ' (not created)') + '</option>'; }).join('') + '</select>' +
       '<label for="gvGrp" style="margin-top:12px">Group</label><select id="gvGrp"><option value="all"' + (grpFilter === 'all' ? ' selected' : '') + '>All groups</option>' +
       r.groups.map(function (g) { return '<option value="' + esc(g.group) + '"' + (String(g.group) === grpFilter ? ' selected' : '') + '>' + (g.group === 'Unassigned' ? 'No group' : 'Group ' + esc(g.group)) + '</option>'; }).join('') + '</select>';
-    h += '<button class="btn small ' + (grpEdit ? '' : 'secondary') + '" style="margin-top:14px" type="button" id="gvEditBtn" aria-pressed="' + grpEdit + '">Edit on behalf of leaders: ' + (grpEdit ? 'On' : 'Off') + '</button>';
+    if (me.perms.mark_availability || me.perms.mark_reading) h += '<button class="btn small ' + (grpEdit ? '' : 'secondary') + '" style="margin-top:14px" type="button" id="gvEditBtn" aria-pressed="' + grpEdit + '">Edit on behalf of leaders: ' + (grpEdit ? 'On' : 'Off') + '</button>';
     if (grpEdit) h += '<p style="margin:10px 0 0;color:var(--muted);font-size:17px">Changes are saved straight away and recorded as "Coordinator". Availability can be changed until the day of the Ekadashi. Reading can be marked from the day of the Ekadashi.</p>';
     var shown = r.groups.filter(function (g) { return grpFilter === 'all' || String(g.group) === grpFilter; });
     var tot = 0, rd = 0, aw = 0;
@@ -1048,7 +1115,7 @@
       h += '<details data-g="' + esc(g.group) + '"' + (grpFilter !== 'all' || openG[String(g.group)] ? ' open' : '') + '><summary>' + (g.group === 'Unassigned' ? 'No group' : 'Group ' + esc(g.group)) +
         '<small>Group Leader: ' + esc(g.leader || 'not set') + ' &middot; Zoom Leader: ' + esc(g.zoomLeader || 'not set') + '</small>' +
         '<small>' + g.members.length + ' devotees &middot; ' + read + ' read &middot; ' + away + ' not available</small></summary>' +
-        (grpEdit && r.ek.generated && daysTo(r.ek.date) <= 0 && pend ? '<button class="btn small" style="margin:6px 0 4px" type="button" data-gv-all="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
+        (grpEdit && me.perms.mark_reading && r.ek.generated && daysTo(r.ek.date) <= 0 && pend ? '<button class="btn small" style="margin:6px 0 4px" type="button" data-gv-all="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
         g.members.map(function (m) { return gvMember(m, r.ek); }).join('') + '</details>';
     });
     $('grpBox').innerHTML = h;
@@ -1240,7 +1307,8 @@
     not_your_group: 'You can only change devotees of your own group.',
     already_done: 'This devotee has already read the portion, so it cannot be changed.',
     not_open: 'Reading can be marked only from the day of the Ekadashi.',
-    admin_pin: 'Coordinators change their PIN from the sheet menu: Gita Parayanam, then Set coordinator PIN.'
+    admin_pin: 'This login changes its PIN from the coordinator page: Change my PIN.',
+    pin_in_use: 'This PIN is already used by another login. Please choose a different one.'
   };
   function lkErr(r) {
     if (r && LEADER_ERR[r.error]) return LEADER_ERR[r.error];
@@ -1313,8 +1381,8 @@
   }
   function renderLeader() {
     var r = lkData;
-    var h = r.leader.admin
-      ? '<section class="card"><h2>Coordinator access</h2><p style="margin:0;color:var(--muted)">You can see and mark all ' + r.leader.groups.length + ' groups, as a Group Leader. Your marks are recorded as "Coordinator".</p></section>'
+    var h = r.leader.all
+      ? '<section class="card"><h2>' + esc(r.leader.label) + '</h2><p style="margin:0;color:var(--muted)">You can see and mark all ' + r.leader.groups.length + ' groups, as a Group Leader. Your marks are recorded as "' + esc(r.leader.label) + '".</p></section>'
       : '<section class="card"><h2>Hari Om, ' + esc(r.leader.name) + '</h2><p style="margin:0;color:var(--muted)">' +
         (r.leader.groups.length > 1 ? 'You lead groups ' : 'You lead group ') + esc(r.leader.groups.join(', ')) + '</p></section>';
     if (!r.ek) {
@@ -1332,7 +1400,7 @@
           (away ? ', ' + away + ' not available' : '') + '</p>' + shareBlock(g) + '<div>' + g.members.map(memberRow).join('') + '</div></section>';
       });
     }
-    if (!r.leader.admin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="changePinForm" novalidate>' +
+    if (!r.leader.all || r.leader.canChangePin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="changePinForm" novalidate>' +
       '<label for="cpC" style="margin-top:10px">Current PIN</label><input id="cpC" name="cur" type="password" autocomplete="current-password">' +
       '<label for="cpN" style="margin-top:12px">New PIN (4 to 12 characters)</label><input id="cpN" name="np" type="password" autocomplete="new-password">' +
       '<label for="cpN2" style="margin-top:12px">Type the new PIN again</label><input id="cpN2" name="np2" type="password" autocomplete="new-password">' +
@@ -1422,8 +1490,8 @@
   }
   function renderZl() {
     var r = zData;
-    var h = r.leader.admin
-      ? '<section class="card"><h2>Coordinator access</h2><p style="margin:0;color:var(--muted)">You can see and mark all ' + r.leader.groups.length + ' groups, as a Zoom Leader. Your marks are recorded as "Coordinator".</p></section>'
+    var h = r.leader.all
+      ? '<section class="card"><h2>' + esc(r.leader.label) + '</h2><p style="margin:0;color:var(--muted)">You can see and mark all ' + r.leader.groups.length + ' groups, as a Zoom Leader. Your marks are recorded as "' + esc(r.leader.label) + '".</p></section>'
       : '<section class="card"><h2>Hari Om, ' + esc(r.leader.name) + '</h2><p style="margin:0;color:var(--muted)">' +
         (r.leader.groups.length > 1 ? 'You are the Zoom Leader of groups ' : 'You are the Zoom Leader of group ') + esc(r.leader.groups.join(', ')) + '</p></section>';
     if (!r.ek) {
@@ -1444,7 +1512,7 @@
           '<div style="margin-top:8px">' + g.members.map(function (m) { return zRow(m, r.ek.canMark); }).join('') + '</div></section>';
       });
     }
-    if (!r.leader.admin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="zChangePin" novalidate>' +
+    if (!r.leader.all || r.leader.canChangePin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="zChangePin" novalidate>' +
       '<label for="zcC" style="margin-top:10px">Current PIN</label><input id="zcC" name="cur" type="password" autocomplete="current-password">' +
       '<label for="zcN" style="margin-top:12px">New PIN (4 to 12 characters)</label><input id="zcN" name="np" type="password" autocomplete="new-password">' +
       '<label for="zcN2" style="margin-top:12px">Type the new PIN again</label><input id="zcN2" name="np2" type="password" autocomplete="new-password">' +
@@ -1516,7 +1584,7 @@
   if (DEMO) {
     var note = document.createElement('p');
     note.style.cssText = 'text-align:center;color:#6b4b00;background:#FFF4D6;border-radius:10px;padding:6px 10px;font-size:16px;margin:8px 0 0';
-    note.textContent = 'Preview with sample data. Coordinator PIN: 1234. Leaders and Zoom Leaders: any number, first PIN 123456.';
+    note.textContent = 'Preview with sample data. PINs: Super admin 1234, Coordinator 2222, Group Leader (all groups) 3333, Zoom Leader (all groups) 4444. Leaders: any number, first PIN 123456.';
     document.querySelector('header').appendChild(note);
   }
 })();
