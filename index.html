@@ -133,6 +133,8 @@
   #lkEk, #zlEk { font-size: calc(19px * var(--s)); padding: 10px 12px; }
   .sharebox { margin: 10px 0 4px; }
   .sharebox .btn { margin-top: 10px; }
+  .dev.nextup { background: #FFF9E5; border-left: 5px solid var(--marigold); padding-left: 10px; border-radius: 8px; }
+  .turn { margin: 8px 0 0; font-weight: 800; font-size: calc(22px * var(--s)); color: var(--ink); }
   .tog.off { background: #F3F3F3; color: #666; }
   .tog.away { background: #FFF4D6; border-color: #EBCB75; color: #6b4b00; }
   .caption { margin: 0 0 2px; text-align: center; color: var(--muted); font-size: calc(17px * var(--s)); }
@@ -301,6 +303,7 @@
     "leaderLogin": "Leader login",
     "zlLogin": "Zoom Leader login",
     "leadersCaption": "For leaders and coordinators",
+    "turn": "Your turn: around {t} (approximate)",
     "coordFallback": "the sabha coordinator"
   },
   "ta": {
@@ -349,6 +352,7 @@
     "leaderLogin": "தலைவர் உள்நுழைவு",
     "zlLogin": "ஜூம் பொறுப்பாளர் உள்நுழைவு",
     "leadersCaption": "தலைவர்கள் மற்றும் ஒருங்கிணைப்பாளர்களுக்கு",
+    "turn": "உங்கள் முறை: சுமார் {t} (தோராயமாக)",
     "coordFallback": "சபா ஒருங்கிணைப்பாளர்"
   },
   "te": {
@@ -397,6 +401,7 @@
     "leaderLogin": "లీడర్ లాగిన్",
     "zlLogin": "జూమ్ లీడర్ లాగిన్",
     "leadersCaption": "లీడర్లు మరియు సమన్వయకర్తల కోసం",
+    "turn": "మీ వంతు: సుమారు {t} (అంచనా)",
     "coordFallback": "సభ సమన్వయకర్త"
   },
   "kn": {
@@ -445,6 +450,7 @@
     "leaderLogin": "ನಾಯಕರ ಲಾಗಿನ್",
     "zlLogin": "ಜೂಮ್ ನಾಯಕರ ಲಾಗಿನ್",
     "leadersCaption": "ನಾಯಕರು ಮತ್ತು ಸಂಯೋಜಕರಿಗಾಗಿ",
+    "turn": "ನಿಮ್ಮ ಸರದಿ: ಸುಮಾರು {t} (ಅಂದಾಜು)",
     "coordFallback": "ಸಭೆಯ ಸಂಯೋಜಕರು"
   },
   "hi": {
@@ -493,6 +499,7 @@
     "leaderLogin": "लीडर लॉगिन",
     "zlLogin": "ज़ूम लीडर लॉगिन",
     "leadersCaption": "लीडर और समन्वयकों के लिए",
+    "turn": "आपकी बारी: लगभग {t} (अनुमानित)",
     "coordFallback": "सभा के समन्वयक"
   }
 };
@@ -661,7 +668,7 @@
           if (d === '1111111111') return res({ ok: true, ready: false, people: [{ id: 'BG-009', name: 'Sample Devotee', group: '3', groupInfo: gi, row: null, status: null }] });
           return res({ ok: true, ready: true, ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' },
             zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' },
-            people: [{ id: 'BG-001', name: 'Lalitha Seetharaman', group: '3', groupInfo: gi, row: 5, portion: 'Chapter 18:75 to Gita Mahatmyam:2', count: 4, status: demo.status }] });
+            people: [{ id: 'BG-001', name: 'Lalitha Seetharaman', group: '3', groupInfo: gi, row: 5, portion: 'Chapter 18:75 to Gita Mahatmyam:2', count: 4, status: demo.status, eta: '2:55 PM' }] });
         }
         if (p.action === 'done') { demo.status = 'Done'; return res({ ok: true }); }
         if (p.action === 'unavailable') { demo.status = 'Unavailable'; return res({ ok: true }); }
@@ -669,8 +676,8 @@
         if (p.action === 'adminStatus') {
           var ar = p.pin === '1234' ? 'superadmin' : p.pin === '2222' ? 'coordinator' : null;
           if (!ar) return res({ ok: false, error: 'wrong_pin' });
-          var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, access: true }
-            : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, access: false };
+          var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, timing: true, access: true }
+            : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, timing: true, access: false };
           return res({ ok: true, role: ar, roleLabel: ar === 'superadmin' ? 'Super admin' : 'Coordinator', perms: pm,
             upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
             progress: { ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' }, total: 220, done: 128, unavailableCount: 2,
@@ -696,15 +703,19 @@
           if (zs === 'temp') return res(p.action === 'zlSet' ? { ok: false, error: 'must_change_pin' } : { ok: true, mustChange: true, leader: { name: 'Uma Sankaran' } });
           if (p.action === 'zlSet') { (p.ids || []).forEach(function (id) { demo.zl[id] = p.status; }); return res({ ok: true, changed: (p.ids || []).length, skipped: 0 }); }
           var zm = [['BG-001', 'A. Usharani', 'Chapter 10, shlokas 39-42', 4], ['BG-007', 'Anagha Anil Tekale', 'Chapter 10, shlokas 43-46', 4], ['BG-012', 'Anuradha Suresh', 'Chapter 10, shlokas 47-49', 3], ['BG-016', 'B. Kamakoti', 'Chapter 11, shlokas 1-4', 4], ['BG-044', 'Jagannathan T V', 'Chapter 11, shlokas 5-7', 3]];
-          var zg = [{ group: 7, members: zm.map(function (m, i) { return { id: m[0], name: m[1], portion: m[2], count: m[3], status: i === 4 ? 'Unavailable' : (demo.zl[m[0]] || 'Pending') }; }) }];
+          var zEta = ['2:40 PM', '2:45 PM', '2:50 PM', '2:55 PM', ''];
+          var zg = [{ group: 7, members: zm.map(function (m, i) { var st = i === 4 ? 'Unavailable' : (demo.zl[m[0]] || 'Pending'); return { id: m[0], name: m[1], portion: m[2], count: m[3], status: st, eta: zEta[i], joinedAt: st !== 'Pending' && st !== 'Unavailable' ? '2:38 PM' : '', recitingAt: st === 'Reciting' || st === 'Done' ? '2:39 PM' : '', doneAt: st === 'Done' ? '2:44 PM' : '' }; }) }];
           if (zs === 'admin') zg.push({ group: 8, members: [{ id: 'BG-090', name: 'Ramya Murugesh', portion: 'Chapter 13, shlokas 1-4', count: 4, status: demo.zl['BG-090'] || 'Pending' }] });
           var zEks = [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', canMark: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', canMark: false }];
           var zE = zEks.filter(function (e) { return e.no === Number(p.no); })[0] || zEks[0];
-          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: zE, groups: zg });
+          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: zE, nextGroups: [{ group: 8, zoomLeader: 'Smt. Radha SK' }, { group: 9, zoomLeader: 'Smt. Anuradha Sampath' }], groups: zg });
         }
         if (p.action === 'adminAccess') return res(p.pin === '1234' ? { ok: true, accounts: [{ role: 'coordinator', label: 'Coordinator (limited access)', set: true }, { role: 'glall', label: 'Group Leader (all groups)', set: true }, { role: 'zlall', label: 'Zoom Leader (all groups)', set: false }] } : { ok: false, error: 'no_permission' });
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
         if (p.action === 'adminChangePin') return res(!p.newPin || p.newPin.length < 4 ? { ok: false, error: 'weak_pin' } : { ok: true });
+        if (p.action === 'adminTimingGet') return res({ ok: true, ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
+        if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
+        if (p.action === 'adminCheck') return res({ ok: true, errors: ['Group 5: the Zoom Leader "Smt. Example" is not found among the devotees.'], warnings: ['3 leader(s) have no PIN yet: Uma Sankaran, Ranjani Ramesh, Rupa Mukherjee.', 'No start time is set, so devotees will not see an estimated turn time.'], info: ['Checking Rama Ekadashi.', 'The allotment covers all 759 shlokas, among 126 devotees.', 'Each devotee reads 6 to 7 shlokas.'] });
         if (p.action === 'adminSetAvailability' || p.action === 'adminSetRead') return res({ ok: true, changed: 1, skipped: 0 });
         if (p.action === 'adminGroups') {
           if (p.pin !== '1234' && p.pin !== '2222') return res({ ok: false, error: 'wrong_pin' });
@@ -766,6 +777,7 @@
     already_done: 'This devotee is marked as read. Mark them as not read first.',
     not_open: 'Reading can be marked only from the day of the Ekadashi.',
     bad_phone: 'Please enter a 10-digit mobile number.',
+    bad_time: 'Please choose a valid start time.',
     bad_name: 'Please enter a name.',
     bad_group: 'The group must be a number.'
   };
@@ -826,6 +838,7 @@
         '<div class="body"><p class="who">' + esc(t('namaste', { name: p.name })) + '</p>' +
         '<p class="big">' + esc(fmtPortion(p.portion)) + '</p>' +
         '<p class="count">' + esc(Number(p.count) === 1 ? t('shloka1') : t('shlokas', { n: p.count })) + '</p>' +
+        (p.eta && p.status !== 'Done' && p.status !== 'Unavailable' ? '<p class="turn">' + esc(t('turn', { t: p.eta })) + '</p>' : '') +
         (p.group !== '' && p.group != null ? '<span class="grp">' + esc(t('group', { g: p.group })) + '</span>' : '') +
         '<div id="act' + idx + '">' + actionBlock(p, idx) + '</div></div></article>';
     });
@@ -972,6 +985,10 @@
       h += '</ul></details></section>';
     }
 
+    h += '<section class="card"><h2>Timing</h2><p style="margin:0 0 6px;color:var(--muted)">Set when the parayanam starts. Devotees then see an approximate time for their turn, and it adjusts as devotees finish.</p>' +
+      '<button class="btn secondary small" type="button" id="openTiming">Open timing</button><div id="timeBox"></div></section>';
+    h += '<section class="card"><h2>Check before the Ekadashi</h2><p style="margin:0 0 6px;color:var(--muted)">Looks for problems: leaders without a PIN, missing leader names, devotees without a portion, and more. Nothing is changed.</p>' +
+      '<button class="btn secondary small" type="button" id="runCheck">Run the check</button><div id="checkBox"></div></section>';
     h += '<section class="card gv"><h2>Group view</h2><p style="margin:0 0 6px;color:var(--muted)">See every group the way its Group Leader (availability) and Zoom Leader (reading) see it.</p>' +
       '<button class="btn secondary small" type="button" id="openGroups">Open group view</button><div id="grpBox"></div></section>';
     if (P.manage_devotees) h += '<section class="card"><h2>Devotees</h2><p style="margin:0 0 6px;color:var(--muted)">Add a devotee, change a group, or mark someone inactive.</p>' +
@@ -1015,10 +1032,51 @@
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
       return;
     }
-    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; accData = null; me = { role: '', label: '', perms: {} }; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
+    if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; accData = null; timingData = null; me = { role: '', label: '', perms: {} }; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
     if (e.target.id === 'openDev') { loadDevotees(e.target); return; }
     var tg = e.target.closest('[data-tog]');
     if (tg) { toggleActive(tg); return; }
+  });
+
+  /* --- timing and readiness check --- */
+  var timingData = null;
+  function renderTiming() {
+    var r = timingData;
+    if (!r.ek) { $('timeBox').innerHTML = '<p>No Ekadashi found.</p>'; return; }
+    var canSave = me.perms.timing;
+    $('timeBox').innerHTML = '<p style="margin:12px 0 4px"><strong>' + esc(r.ek.name) + '</strong>, ' + esc(fmtDateEn(r.ek.date)) + '</p>' +
+      '<form id="timingForm" novalidate><label for="tmStart">Start time</label><input id="tmStart" type="time" value="' + esc(r.start) + '"' + (canSave ? '' : ' disabled') + '>' +
+      '<label for="tmPace" style="margin-top:12px">Pace</label><select id="tmPace"' + (canSave ? '' : ' disabled') + '>' +
+      [['0.9', 'Faster than usual'], ['1', 'As expected'], ['1.1', 'Slower than usual'], ['1.25', 'Much slower']].map(function (o) { return '<option value="' + o[0] + '"' + (String(r.factor) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+      (canSave ? '<button class="btn" type="submit">Save</button>' : '') + '<div id="tmMsg" role="status" aria-live="polite"></div></form>' +
+      '<p style="color:var(--muted);font-size:17px;margin-top:10px">' + (r.end ? 'Expected to finish around <strong>' + esc(r.end) + '</strong> (approximate). ' : (r.ek.generated ? '' : 'Create the allotment to see the expected finish. ')) +
+      (r.avgMinutes ? 'Average so far: ' + esc(r.avgMinutes) + ' minutes per devotee.' : '') + '</p>';
+  }
+  $('adminPanel').addEventListener('click', function (e) {
+    if (e.target.id === 'openTiming') {
+      e.target.disabled = true; e.target.textContent = 'Please wait...';
+      api({ action: 'adminTimingGet', pin: pin }).then(function (r) { e.target.disabled = false; e.target.textContent = 'Reload timing'; if (!r.ok) { say($('timeBox'), adminErr(r), true); return; } timingData = r; renderTiming(); })
+        .catch(function () { e.target.disabled = false; e.target.textContent = 'Open timing'; say($('timeBox'), NET, true); });
+    } else if (e.target.id === 'runCheck') {
+      e.target.disabled = true; e.target.textContent = 'Checking...';
+      api({ action: 'adminCheck', pin: pin }).then(function (r) {
+        e.target.disabled = false; e.target.textContent = 'Run the check again';
+        if (!r.ok) { say($('checkBox'), adminErr(r), true); return; }
+        var blk = function (title, cls, items) { return items.length ? '<p style="margin:12px 0 2px"><span class="chip ' + cls + '">' + title + ' (' + items.length + ')</span></p><ul class="list">' + items.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' : ''; };
+        $('checkBox').innerHTML = blk('To fix', 'wait', r.errors) + blk('Worth a look', 'grey', r.warnings) + '<ul class="list">' + r.info.map(function (x) { return '<li><span style="color:var(--muted)">' + esc(x) + '</span></li>'; }).join('') + '</ul>';
+      }).catch(function () { e.target.disabled = false; e.target.textContent = 'Run the check'; say($('checkBox'), NET, true); });
+    }
+  });
+  $('adminPanel').addEventListener('submit', function (e) {
+    if (e.target.id !== 'timingForm') return;
+    e.preventDefault();
+    var st = $('tmStart').value, box = $('tmMsg');
+    if (!st) { say(box, 'Please choose the start time.', true); return; }
+    say(box, 'Please wait...');
+    api({ action: 'adminTimingSave', pin: pin, no: timingData.ek.no, start: st, factor: Number($('tmPace').value) }).then(function (r) {
+      if (!r.ok) { say(box, adminErr(r), true); return; }
+      timingData.start = st; timingData.factor = Number($('tmPace').value); timingData.end = r.end; renderTiming(); say($('tmMsg'), 'Saved. Devotees now see the estimated turn times.');
+    }).catch(function () { say(box, NET, true); });
   });
 
   /* --- Logins and PINs (Super admin) --- */
@@ -1087,6 +1145,8 @@
     else if (m.away && !m.hasRow) read = '<span class="chip grey">Left out of allotment</span>';
     else if (!m.hasRow) read = '<span class="chip grey">' + (ek.generated ? 'No portion' : 'Portions not created') + '</span>';
     else if (m.status === 'Done') read = '<span class="chip ready">Read \u2713</span>';
+    else if (m.status === 'Reciting') read = '<span class="chip wait">Reciting now</span>';
+    else if (m.status === 'Joined') read = '<span class="chip wait">Joined</span>';
     else if (m.status === 'Unavailable') read = '<span class="chip wait">Cannot read</span>';
     else read = '<span class="chip grey">Not read yet</span>';
     return '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
@@ -1481,11 +1541,26 @@
       zData = r; renderZl();
     }).catch(function () { btn.disabled = false; btn.textContent = 'Sign in'; say($('zlMsg'), NET, true); });
   }
-  function zRow(m, canMark) {
-    var h = '<div class="dev" data-zid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p><small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small><div class="ctl">';
+  var Z_LABEL = { Pending: 'Not started', Joined: 'Joined', Reciting: 'Reciting now', Done: 'Done \u2713', Unavailable: 'Not available' };
+  function zRow(m, canMark, isNext) {
+    var times = [];
+    if (m.status !== 'Done' && m.status !== 'Unavailable' && m.eta) times.push('Turn around ' + esc(m.eta));
+    if (m.joinedAt) times.push('Joined ' + esc(m.joinedAt));
+    if (m.recitingAt) times.push('Reciting ' + esc(m.recitingAt));
+    if (m.doneAt) times.push('Done ' + esc(m.doneAt));
+    var h = '<div class="dev' + (isNext ? ' nextup' : '') + '" data-zid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + (isNext ? ' <span class="chip ready">Next</span>' : '') + '</p>' +
+      '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' + (times.length ? '<small>' + times.join(' &middot; ') + '</small>' : '') + '<div class="ctl">';
+    var btn = function (st, label, primary) { return '<button type="button" class="btn small ' + (primary ? '' : 'secondary') + '" data-zact="' + st + '" data-id="' + esc(m.id) + '">' + label + '</button>'; };
     if (m.status === 'Unavailable') h += '<span class="chip wait">Not available</span>';
-    else if (!canMark) h += '<span class="chip grey">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</span>';
-    else h += '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-read="' + esc(m.id) + '" aria-pressed="' + (m.status === 'Done' ? 'true' : 'false') + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</button>';
+    else if (!canMark) h += '<span class="chip grey">' + esc(Z_LABEL[m.status] || m.status) + '</span>';
+    else if (m.status === 'Done') h += '<span class="chip ready">Done \u2713</span>' + btn('Pending', 'Undo', false);
+    else {
+      h += '<span class="chip ' + (m.status === 'Pending' ? 'grey' : 'wait') + '">' + esc(Z_LABEL[m.status] || m.status) + '</span>';
+      if (m.status === 'Pending') h += btn('Joined', 'Joined', true) + btn('Done', 'Done \u2713', false);
+      else if (m.status === 'Joined') h += btn('Reciting', 'Reciting', true) + btn('Done', 'Done \u2713', false);
+      else h += btn('Done', 'Done \u2713', true);
+      if (m.status !== 'Pending') h += btn('Pending', 'Undo', false);
+    }
     return h + '<span class="saved" role="status"></span></div></div>';
   }
   function renderZl() {
@@ -1500,16 +1575,20 @@
       h += '<section class="card"><label for="zlEk">Ekadashi</label><select id="zlEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.canMark
-          ? 'After the session, tap a name to mark that devotee as having read. Tap again to undo.'
+          ? 'One after another on Zoom: tap Joined when a devotee logs in, Reciting when they start, and Done when they finish. Each tap records the time.'
           : 'You can check the portions now. Reading can be marked from the day of the Ekadashi.') + '</p></section>';
+      if (r.nextGroups && r.nextGroups.length) h += '<section class="card"><h3>Reading after your group</h3>' + r.nextGroups.map(function (n, i) {
+        return '<p style="margin:6px 0 0;font-size:' + (i === 0 ? '20' : '18') + 'px"><strong>' + (i === 0 ? 'Next: ' : 'Then: ') + 'Group ' + esc(n.group) + '</strong> &mdash; Zoom Leader ' + esc(n.zoomLeader || 'not set') + '</p>'; }).join('') + '</section>';
+      else if (r.lastGroup) h += '<section class="card"><p style="margin:0">Your group is the <strong>last group</strong> to read.</p></section>';
       if (r.groups.length > 1) h += groupSelHtml('zlGrpSel', r.groups, zGrp);
       r.groups.filter(function (g) { return zGrp === 'all' || String(g.group) === zGrp; }).forEach(function (g) {
-        var done = g.members.filter(function (m) { return m.status === 'Done'; }).length, pending = g.members.filter(function (m) { return m.status === 'Pending'; }).length;
+        var done = g.members.filter(function (m) { return m.status === 'Done'; }).length, pending = g.members.filter(function (m) { return m.status !== 'Done' && m.status !== 'Unavailable'; }).length;
         var pct = g.members.length ? Math.round(100 * done / g.members.length) : 0;
-        h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p class="stat">' + done + ' of ' + g.members.length + ' have read</p>' +
+        var nextM = g.members.filter(function (m) { return m.status !== 'Done' && m.status !== 'Unavailable'; })[0], nextId = nextM ? nextM.id : '';
+        h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p class="stat">' + done + ' of ' + g.members.length + ' done</p>' +
           '<div class="meter" role="img" aria-label="' + pct + ' percent have read"><span style="width:' + pct + '%"></span></div>' +
-          (pending && r.ek.canMark ? '<button class="btn" type="button" data-allgrp="' + esc(g.group) + '">Mark everyone as read</button>' : '') +
-          '<div style="margin-top:8px">' + g.members.map(function (m) { return zRow(m, r.ek.canMark); }).join('') + '</div></section>';
+          (pending && r.ek.canMark ? '<button class="btn secondary" type="button" data-allgrp="' + esc(g.group) + '">Mark everyone as done</button>' : '') +
+          '<div style="margin-top:8px">' + g.members.map(function (m) { return zRow(m, r.ek.canMark, r.ek.canMark && m.id === nextId); }).join('') + '</div></section>';
       });
     }
     if (!r.leader.all || r.leader.canChangePin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="zChangePin" novalidate>' +
@@ -1530,28 +1609,28 @@
       if (res.ok) done(); else fail(zlErr(res));
     }).catch(function () { fail(NET); });
   }
+  function zRefresh(y) {
+    return api({ action: 'zlOverview', phone: zk.phone, leaderPin: zk.pin, no: zData.ek.no }).then(function (r) {
+      if (r.ok && !r.mustChange) { zData = r; renderZl(); window.scrollTo(0, y); }
+    });
+  }
   $('zlPanel').addEventListener('click', function (e) {
     if (e.target.id === 'zlOut') { zk = null; zData = null; zGrp = 'all'; $('zlPanel').hidden = true; $('zlLogin').hidden = false; $('zlPin').value = ''; return; }
     var allb = e.target.closest('[data-allgrp]');
     if (allb) {
       var gno = allb.getAttribute('data-allgrp'), grp = zData.groups.filter(function (g) { return String(g.group) === gno; })[0];
-      var ids = grp.members.filter(function (m) { return m.status === 'Pending'; }).map(function (m) { return m.id; });
-      if (!confirm('Mark all ' + ids.length + ' remaining devotees of group ' + gno + ' as having read?')) return;
+      var ids = grp.members.filter(function (m) { return m.status !== 'Done' && m.status !== 'Unavailable'; }).map(function (m) { return m.id; });
+      if (!confirm('Mark all ' + ids.length + ' remaining devotees of group ' + gno + ' as done?')) return;
       allb.disabled = true; allb.textContent = 'Please wait...';
-      zSave(ids, 'Done', function () {
-        grp.members.forEach(function (m) { if (ids.indexOf(m.id) >= 0) m.status = 'Done'; });
-        var y = window.scrollY; renderZl(); window.scrollTo(0, y);
-      }, function (msg) { allb.disabled = false; allb.textContent = 'Mark everyone as read'; alert(msg); });
+      zSave(ids, 'Done', function () { zRefresh(window.scrollY); }, function (msg) { allb.disabled = false; allb.textContent = 'Mark everyone as done'; alert(msg); });
       return;
     }
-    var b = e.target.closest('[data-read]'); if (!b) return;
-    var id = b.getAttribute('data-read'), m = zFind(id), want = m.status === 'Done' ? 'Pending' : 'Done';
-    b.disabled = true;
-    zSave([id], want, function () {
-      m.status = want; var y = window.scrollY; renderZl(); window.scrollTo(0, y);
-      zFlash(id, 'Saved'); var nb = document.querySelector('#zlPanel [data-read="' + id + '"]'); if (nb) nb.focus();
-    }, function (msg) { b.disabled = false; zFlash(id, msg, true); });
+    var b = e.target.closest('[data-zact]'); if (!b) return;
+    var id = b.getAttribute('data-id'), want = b.getAttribute('data-zact');
+    var all = b.closest('.ctl').querySelectorAll('button'); all.forEach(function (x) { x.disabled = true; });
+    zSave([id], want, function () { zRefresh(window.scrollY); }, function (msg) { all.forEach(function (x) { x.disabled = false; }); zFlash(id, msg, true); });
   });
+
   $('zlPanel').addEventListener('change', function (e) {
     if (e.target.id === 'zlEk') loadZl(+e.target.value);
     if (e.target.id === 'zlGrpSel') { zGrp = e.target.value; renderZl(); }
