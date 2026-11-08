@@ -136,6 +136,10 @@
   .dev.nextup { background: #FFF9E5; border-left: 5px solid var(--marigold); padding-left: 10px; border-radius: 8px; }
   .turn { margin: 8px 0 0; font-weight: 800; font-size: calc(22px * var(--s)); color: var(--ink); }
   .tog.off { background: #F3F3F3; color: #666; }
+  .chk { display: inline-flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 4px; font-size: calc(20px * var(--s)); font-weight: 700; color: #12512f; cursor: pointer; }
+  .chk input { width: 30px; height: 30px; accent-color: #1b7a47; cursor: pointer; margin: 0; }
+  .chk.off { color: #a3270f; }
+  .chk.locked { cursor: default; opacity: .85; }
   .tog.away { background: #FFF4D6; border-color: #EBCB75; color: #6b4b00; }
   .caption { margin: 0 0 2px; text-align: center; color: var(--muted); font-size: calc(17px * var(--s)); }
   .btn.foot { min-height: 52px; font-size: calc(19px * var(--s)); margin-top: 10px; }
@@ -1136,20 +1140,18 @@
   }
   function gvMember(m, ek) {
     var dd = daysTo(ek.date);
-    var canAway = grpEdit && me.perms.mark_availability && dd >= 0 && m.status !== 'Done';
+    var canAway = me.perms.mark_availability && dd >= 0 && m.status !== 'Done';
     var canRead = grpEdit && me.perms.mark_reading && ek.generated && dd <= 0 && m.hasRow && m.status !== 'Unavailable';
-    var avail = canAway
-      ? '<button type="button" class="tog ' + (m.away ? 'away' : 'on') + '" data-gv-away="' + esc(m.id) + '">' + (m.away ? 'Not available' : 'Available') + '</button>'
-      : (m.away ? '<span class="chip wait">Not available</span>' : '<span class="chip ready">Available</span>');
+    var avail = availBox(m, 'data-gv-away', canAway);
     var read;
-    if (canRead) read = '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-gv-read="' + esc(m.id) + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Not read yet') + '</button>';
+    if (canRead) read = '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-gv-read="' + esc(m.id) + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Mark as read') + '</button>';
     else if (m.away && !m.hasRow) read = '<span class="chip grey">Left out of allotment</span>';
     else if (!m.hasRow) read = '<span class="chip grey">' + (ek.generated ? 'No portion' : 'Portions not created') + '</span>';
     else if (m.status === 'Done') read = '<span class="chip ready">Read \u2713</span>';
     else if (m.status === 'Reciting') read = '<span class="chip wait">Reciting now</span>';
     else if (m.status === 'Joined') read = '<span class="chip wait">Joined</span>';
     else if (m.status === 'Unavailable') read = '<span class="chip wait">Cannot read</span>';
-    else read = '<span class="chip grey">Not read yet</span>';
+    else read = '';
     return '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.hasRow ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') +
       '<div class="row2">' + avail + read + '<span class="saved" role="status"></span></div>' +
@@ -1195,11 +1197,11 @@
     if (aw) {
       var m = gvFind(aw.getAttribute('data-gv-away')), want = !m.away; aw.disabled = true;
       api({ action: 'adminSetAvailability', pin: pin, no: grpData.ek.no, id: m.id, away: want }).then(function (r) {
-        if (!r.ok) { aw.disabled = false; gvFlash(m.id, adminErr(r), true); return; }
+        if (!r.ok) { aw.disabled = false; aw.checked = !m.away; gvFlash(m.id, adminErr(r), true); return; }
         m.away = want; m.awayBy = want ? 'Coordinator' : '';
         if (grpData.ek.generated && m.hasRow) m.status = want ? 'Unavailable' : 'Pending';
         gvRedraw(m.id);
-      }).catch(function () { aw.disabled = false; gvFlash(m.id, NET, true); });
+      }).catch(function () { aw.disabled = false; aw.checked = !m.away; gvFlash(m.id, NET, true); });
     } else if (rd) {
       var m2 = gvFind(rd.getAttribute('data-gv-read')), st = m2.status === 'Done' ? 'Pending' : 'Done'; rd.disabled = true;
       api({ action: 'adminSetRead', pin: pin, no: grpData.ek.no, status: st, ids: [m2.id] }).then(function (r) {
@@ -1433,11 +1435,16 @@
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
   }
+  // Availability as a tick box: ticked = will read, not ticked = not available
+  function availBox(m, attr, enabled) {
+    return '<label class="chk ' + (m.away ? 'off' : '') + (enabled ? '' : ' locked') + '"><input type="checkbox" ' + attr + '="' + esc(m.id) + '"' + (m.away ? '' : ' checked') + (enabled ? '' : ' disabled') + '>' +
+      '<span>' + (m.away ? 'Not available' : 'Available') + '</span></label>';
+  }
   function memberRow(m) {
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
     if (m.status === 'Done') h += '<span class="chip ready">Already read</span>';
-    else h += '<button type="button" class="tog ' + (m.away ? 'away' : 'on') + '" data-away="' + esc(m.id) + '" aria-pressed="' + (m.away ? 'true' : 'false') + '">' + (m.away ? 'Not available' : 'Available') + '</button>';
+    else h += availBox(m, 'data-away', true);
     return h + '<span class="saved" role="status"></span></div></div>';
   }
   function renderLeader() {
@@ -1494,8 +1501,8 @@
         m.away = want; if (lkData.ek.generated) m.status = want ? 'Unavailable' : 'Pending';
         var y = window.scrollY; renderLeader(); window.scrollTo(0, y);
         rowFlash(id, 'Saved'); var nb = document.querySelector('#leaderPanel [data-away="' + id + '"]'); if (nb) nb.focus();
-      } else { b.disabled = false; rowFlash(id, lkErr(res), true); }
-    }).catch(function () { b.disabled = false; rowFlash(id, NET, true); });
+      } else { b.disabled = false; b.checked = !m.away; rowFlash(id, lkErr(res), true); }
+    }).catch(function () { b.disabled = false; b.checked = !m.away; rowFlash(id, NET, true); });
   });
   function pinSubmit(getCreds, reload) {
     return function (e) {
