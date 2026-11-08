@@ -682,7 +682,7 @@
           if (!ar) return res({ ok: false, error: 'wrong_pin' });
           var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, timing: true, access: true }
             : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, timing: true, access: false };
-          return res({ ok: true, role: ar, roleLabel: ar === 'superadmin' ? 'Super admin' : 'Coordinator', perms: pm,
+          return res({ ok: true, sheetUrl: 'https://docs.google.com/spreadsheets/', role: ar, roleLabel: ar === 'superadmin' ? 'Super admin' : 'Coordinator', perms: pm,
             upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
             progress: { ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' }, total: 220, done: 128, unavailableCount: 2,
               groups: [{ group: '1', total: 20, done: 14, unavailable: 0 }, { group: '2', total: 20, done: 9, unavailable: 1 }, { group: '3', total: 20, done: 17, unavailable: 1 }],
@@ -773,7 +773,7 @@
     no_permission: 'Your login is not allowed to do this. Please ask the Super admin.',
     pin_in_use: 'This PIN is already used by another login. Please choose a different one.',
     weak_pin: 'Please choose a PIN of 4 to 12 characters that is different from your current PIN.',
-    has_reading: 'Someone is already marked as having read, so this cannot be removed.',
+    has_reading: 'Reading has already started (someone is marked as read), so this cannot be removed.',
     not_too_early: 'This allotment was created at the right time, so it cannot be removed here. Use Create again instead.',
     not_created: 'No allotment has been created for this Ekadashi.',
     locked: 'Too many wrong attempts. Please try again after 15 minutes.',
@@ -931,7 +931,7 @@
   function renderAdmin() {
     var r = adminData, h = '', P = me.perms;
     h += '<section class="card"><p style="margin:0;color:var(--muted)">Signed in as <strong>' + esc(me.label) + '</strong></p></section>';
-    h += '<section class="card"><h2>Allotments</h2><p style="margin:0 0 6px;color:var(--muted)">Create the portions for an Ekadashi.</p>';
+    h += '<section class="card"><h2>Allotments</h2>' + (r.sheetUrl ? '<p style="margin:0 0 8px"><a href="' + esc(r.sheetUrl) + '" target="_blank" rel="noopener" style="font-weight:700">Open the allotment in Google Sheet &#8599;</a><br><span style="color:var(--muted);font-size:17px">Use the Ekadashi No column to see one Ekadashi.</span></p>' : '') + '<p style="margin:0 0 6px;color:var(--muted)">Create the portions for an Ekadashi.</p>';
     if (!r.upcoming.length) h += '<p>No upcoming Ekadashi in the sheet.</p>';
     r.upcoming.forEach(function (u) {
       var open = u.canCreate !== false, chip, btn, note = '';
@@ -941,6 +941,7 @@
         btn = allowed
           ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
           : '<button class="btn small secondary" type="button" disabled>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
+        if (u.generated && P.remove) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button></div>';
         if (!allowed) note = 'Your login is not allowed to ' + (u.generated ? 'create this again' : 'create allotments') + '. Ask the Super admin.';
       } else if (u.generated) {
         chip = '<span class="chip wait">Created too early</span>';
@@ -1018,7 +1019,7 @@
   $('adminPanel').addEventListener('click', function (e) {
     var rm = e.target.closest('[data-remove]');
     if (rm) {
-      if (!confirm('This removes the portions created for this Ekadashi, so leaders and devotees can no longer see them. You can create them again once it opens. Continue?')) return;
+      if (!confirm('This removes the portions created for this Ekadashi. Leaders and devotees will no longer see them, and you can create them again. Availability marks are kept. Continue?')) return;
       rm.disabled = true; var oldT = rm.textContent; rm.textContent = 'Please wait...';
       api({ action: 'adminRemoveAllotment', pin: pin, no: +rm.getAttribute('data-remove') }).then(function (res) {
         if (res.ok) { loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, 'Allotment removed. You can create it again once it opens.'); }); }
