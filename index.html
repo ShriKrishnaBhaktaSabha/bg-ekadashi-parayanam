@@ -785,6 +785,7 @@
     if (r && r.error === 'too_early') return 'This allotment can be created only from ' + fmtDateEn(r.opens) + ', after ' + r.prevName + ' has come.';
     if (r && ADMIN_ERR[r.error]) return ADMIN_ERR[r.error];
     if (r && r.error === 'server_error') return 'Something went wrong' + (r.detail ? ': ' + esc(r.detail) : '.');
+    if (r && r.error === 'unknown_action') return 'The sheet script does not have this feature yet. In Apps Script, replace WebApp.gs and Allotment.gs with the latest files, Save, then Deploy > Manage deployments > Edit > New version > Deploy.';
     return 'Something went wrong. Please try again.';
   }
   var NET = 'Could not connect. Please check your internet and try again.';
