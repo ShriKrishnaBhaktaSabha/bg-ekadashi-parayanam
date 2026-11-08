@@ -138,7 +138,9 @@
   .tog.off { background: #F3F3F3; color: #666; }
   .chk { display: inline-flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 4px; font-size: calc(20px * var(--s)); font-weight: 700; color: #12512f; cursor: pointer; }
   .chk input { width: 30px; height: 30px; accent-color: #1b7a47; cursor: pointer; margin: 0; }
-  .chk.off { color: #a3270f; }
+  .chk.no { color: #a3270f; }
+  .chk.no input { accent-color: #c0392b; }
+  .chk2 { display: flex; flex-wrap: wrap; gap: 2px 24px; }
   .chk.locked { cursor: default; opacity: .85; }
   .tog.away { background: #FFF4D6; border-color: #EBCB75; color: #6b4b00; }
   .caption { margin: 0 0 2px; text-align: center; color: var(--muted); font-size: calc(17px * var(--s)); }
@@ -1147,7 +1149,7 @@
     var read;
     if (canRead) read = '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-gv-read="' + esc(m.id) + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Mark as read') + '</button>';
     else if (m.away && !m.hasRow) read = '';
-    else if (!m.hasRow) read = '<span class="chip grey">' + (ek.generated ? 'No portion' : 'Portions not created') + '</span>';
+    else if (!m.hasRow) read = '';
     else if (m.status === 'Done') read = '<span class="chip ready">Read \u2713</span>';
     else if (m.status === 'Reciting') read = '<span class="chip wait">Reciting now</span>';
     else if (m.status === 'Joined') read = '<span class="chip wait">Joined</span>';
@@ -1196,13 +1198,15 @@
     if (e.target.id === 'gvEditBtn') { grpEdit = !grpEdit; renderGroupView(); return; }
     var aw = e.target.closest('[data-gv-away]'), rd = e.target.closest('[data-gv-read]'), al = e.target.closest('[data-gv-all]');
     if (aw) {
-      var m = gvFind(aw.getAttribute('data-gv-away')), want = !m.away; aw.disabled = true;
+      var m = gvFind(aw.getAttribute('data-gv-away')), want = aw.getAttribute('data-val') === 'no';
+      if (want === !!m.away) { aw.checked = true; return; }
+      var sib2 = swapTicks_(aw); aw.disabled = true;
       api({ action: 'adminSetAvailability', pin: pin, no: grpData.ek.no, id: m.id, away: want }).then(function (r) {
-        if (!r.ok) { aw.disabled = false; aw.checked = !m.away; gvFlash(m.id, adminErr(r), true); return; }
+        if (!r.ok) { aw.disabled = false; undoTicks_(aw, sib2); gvFlash(m.id, adminErr(r), true); return; }
         m.away = want; m.awayBy = want ? 'Coordinator' : '';
         if (grpData.ek.generated && m.hasRow) m.status = want ? 'Unavailable' : 'Pending';
         gvRedraw(m.id);
-      }).catch(function () { aw.disabled = false; aw.checked = !m.away; gvFlash(m.id, NET, true); });
+      }).catch(function () { aw.disabled = false; undoTicks_(aw, sib2); gvFlash(m.id, NET, true); });
     } else if (rd) {
       var m2 = gvFind(rd.getAttribute('data-gv-read')), st = m2.status === 'Done' ? 'Pending' : 'Done'; rd.disabled = true;
       api({ action: 'adminSetRead', pin: pin, no: grpData.ek.no, status: st, ids: [m2.id] }).then(function (r) {
@@ -1438,9 +1442,14 @@
   }
   // Availability as a tick box: ticked = will read, not ticked = not available
   function availBox(m, attr, enabled) {
-    return '<label class="chk ' + (m.away ? 'off' : '') + (enabled ? '' : ' locked') + '"><input type="checkbox" ' + attr + '="' + esc(m.id) + '"' + (m.away ? '' : ' checked') + (enabled ? '' : ' disabled') + '>' +
-      '<span>' + (m.away ? 'Not available' : 'Available') + '</span></label>';
+    var one = function (val, label, checked) {
+      return '<label class="chk ' + val + (enabled ? '' : ' locked') + '"><input type="checkbox" ' + attr + '="' + esc(m.id) + '" data-val="' + val + '"' + (checked ? ' checked' : '') + (enabled ? '' : ' disabled') + '><span>' + label + '</span></label>';
+    };
+    return '<div class="chk2">' + one('yes', 'Available', !m.away) + one('no', 'Not available', !!m.away) + '</div>';
   }
+  // the two boxes behave as one choice: ticking one clears the other straight away
+  function swapTicks_(b) { var s = b.closest('.chk2').querySelector('input:not([data-val="' + b.getAttribute('data-val') + '"])'); if (s) s.checked = false; return s; }
+  function undoTicks_(b, s) { b.checked = false; if (s) s.checked = true; }
   function memberRow(m) {
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
@@ -1495,15 +1504,16 @@
       return;
     }
     var b = e.target.closest('[data-away]'); if (!b) return;
-    var id = b.getAttribute('data-away'), m = findMember(id), want = !m.away;
-    b.disabled = true;
+    var id = b.getAttribute('data-away'), m = findMember(id), want = b.getAttribute('data-val') === 'no';
+    if (want === !!m.away) { b.checked = true; return; }     // tapping the one already chosen changes nothing
+    var sib = swapTicks_(b); b.disabled = true;
     api({ action: 'leaderSet', phone: lk.phone, leaderPin: lk.pin, no: lkData.ek.no, id: id, away: want }).then(function (res) {
       if (res.ok) {
         m.away = want; if (lkData.ek.generated) m.status = want ? 'Unavailable' : 'Pending';
         var y = window.scrollY; renderLeader(); window.scrollTo(0, y);
         rowFlash(id, 'Saved'); var nb = document.querySelector('#leaderPanel [data-away="' + id + '"]'); if (nb) nb.focus();
-      } else { b.disabled = false; b.checked = !m.away; rowFlash(id, lkErr(res), true); }
-    }).catch(function () { b.disabled = false; b.checked = !m.away; rowFlash(id, NET, true); });
+      } else { b.disabled = false; undoTicks_(b, sib); rowFlash(id, lkErr(res), true); }
+    }).catch(function () { b.disabled = false; undoTicks_(b, sib); rowFlash(id, NET, true); });
   });
   function pinSubmit(getCreds, reload) {
     return function (e) {
