@@ -1146,12 +1146,12 @@
     var avail = availBox(m, 'data-gv-away', canAway);
     var read;
     if (canRead) read = '<button type="button" class="tog ' + (m.status === 'Done' ? 'on' : 'off') + '" data-gv-read="' + esc(m.id) + '">' + (m.status === 'Done' ? 'Read \u2713' : 'Mark as read') + '</button>';
-    else if (m.away && !m.hasRow) read = '<span class="chip grey">Left out of allotment</span>';
+    else if (m.away && !m.hasRow) read = '';
     else if (!m.hasRow) read = '<span class="chip grey">' + (ek.generated ? 'No portion' : 'Portions not created') + '</span>';
     else if (m.status === 'Done') read = '<span class="chip ready">Read \u2713</span>';
     else if (m.status === 'Reciting') read = '<span class="chip wait">Reciting now</span>';
     else if (m.status === 'Joined') read = '<span class="chip wait">Joined</span>';
-    else if (m.status === 'Unavailable') read = '<span class="chip wait">Cannot read</span>';
+    else if (m.status === 'Unavailable') read = '';
     else read = '';
     return '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.hasRow ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') +
