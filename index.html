@@ -682,10 +682,10 @@
         if (p.action === 'adminStatus') {
           var ar = p.pin === '1234' ? 'superadmin' : p.pin === '2222' ? 'coordinator' : null;
           if (!ar) return res({ ok: false, error: 'wrong_pin' });
-          var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, timing: true, access: true }
-            : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, timing: true, access: false };
+          var pm = ar === 'superadmin' ? { view: true, create: true, recreate: true, remove: true, mark_availability: true, mark_reading: true, manage_devotees: true, leader_pins: true, leader_screens: true, timing: true, deadline: true, access: true }
+            : { view: true, create: true, recreate: false, remove: false, mark_availability: true, mark_reading: true, manage_devotees: false, leader_pins: true, leader_screens: false, timing: true, deadline: true, access: false };
           return res({ ok: true, sheetUrl: 'https://docs.google.com/spreadsheets/', role: ar, roleLabel: ar === 'superadmin' ? 'Super admin' : 'Coordinator', perms: pm,
-            upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
+            upcoming: [{ no: 2, date: isoIn(2), name: 'Rama Ekadashi', generated: true, canCreate: true, deadline: '', deadlineText: 'Mon 9 Nov, 4:00 PM', deadlineSet: true, deadlinePassed: true }, { no: 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false, deadlineSet: false, deadlinePassed: false, canCreate: false, opens: isoIn(2), prevName: 'Rama Ekadashi' }, { no: 4, date: isoIn(31), name: 'Utpanna Ekadashi', generated: true, canCreate: false, opens: isoIn(17), prevName: 'Devutthana Ekadashi' }],
             progress: { ekadashi: { no: 2, date: isoIn(2), name: 'Rama Ekadashi' }, total: 220, done: 128, unavailableCount: 2,
               groups: [{ group: '1', total: 20, done: 14, unavailable: 0 }, { group: '2', total: 20, done: 9, unavailable: 1 }, { group: '3', total: 20, done: 17, unavailable: 1 }],
               leftOut: [{ name: 'Meena S', group: '2' }],
@@ -719,6 +719,7 @@
         if (p.action === 'adminAccess') return res(p.pin === '1234' ? { ok: true, accounts: [{ role: 'coordinator', label: 'Coordinator (limited access)', set: true }, { role: 'glall', label: 'Group Leader (all groups)', set: true }, { role: 'zlall', label: 'Zoom Leader (all groups)', set: false }] } : { ok: false, error: 'no_permission' });
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
         if (p.action === 'adminChangePin') return res(!p.newPin || p.newPin.length < 4 ? { ok: false, error: 'weak_pin' } : { ok: true });
+        if (p.action === 'adminDeadlineSave') return res({ ok: true, deadline: p.deadline, deadlineText: p.deadline ? 'Mon 16 Nov, 4:00 PM' : '', deadlineSet: !!p.deadline, deadlinePassed: false });
         if (p.action === 'adminTimingGet') return res({ ok: true, ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
         if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
         if (p.action === 'adminCheck') return res({ ok: true, errors: ['Group 5: the Zoom Leader "Smt. Example" is not found among the devotees.'], warnings: ['3 leader(s) have no PIN yet: Uma Sankaran, Ranjani Ramesh, Rupa Mukherjee.', 'No start time is set, so devotees will not see an estimated turn time.'], info: ['Checking Rama Ekadashi.', 'The allotment covers all 759 shlokas, among 126 devotees.', 'Each devotee reads 6 to 7 shlokas.'] });
@@ -745,7 +746,7 @@
           var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2], portion: m[3], count: 6 }; }) }];
           if (lkState === 'admin') lg.push({ group: 4, members: [{ id: 'BG-040', name: 'Ranjani Ramesh', away: !!demo.away[cur.no + 'BG-040'], status: null }, { id: 'BG-041', name: 'Rajeswari Shivashanker', away: false, status: null }] });
           lg[0].practice = 'Saturday, 7:00 PM IST';
-          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Group Leader (all groups)' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], all: lkState === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Group Leader (all groups)', canChangePin: p.leaderPin === '3333' }, ekadashis: eks, ek: cur, zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
+          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Group Leader (all groups)' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], all: lkState === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Group Leader (all groups)', canChangePin: p.leaderPin === '3333' }, ekadashis: eks, ek: Object.assign({}, cur, { deadline: 'Mon 9 Nov, 4:00 PM', closed: /[?&]closed/.test(location.search) }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
         }
         if (p.action === 'leaderSet') { demo.away[p.no + p.id] = p.away; return res({ ok: true }); }
         if (p.action === 'adminRemoveAllotment') return res({ ok: true, removed: 210 });
@@ -788,6 +789,7 @@
     bad_group: 'The group must be a number.'
   };
   function adminErr(r) {
+    if (r && r.error === 'before_deadline') return 'The availability deadline has not passed yet' + (r.set ? ' (it closes ' + esc(r.deadline) + ')' : ', and no deadline is set. Set one in the Allotments card') + '. The allotment can be created after it.';
     if (r && r.error === 'too_early') return 'This allotment can be created only from ' + fmtDateEn(r.opens) + ', after ' + r.prevName + ' has come.';
     if (r && ADMIN_ERR[r.error]) return ADMIN_ERR[r.error];
     if (r && r.error === 'server_error') return 'Something went wrong' + (r.detail ? ': ' + esc(r.detail) : '.');
@@ -940,11 +942,14 @@
       if (open) {
         chip = '<span class="chip ' + (u.generated ? 'ready' : 'wait') + '">' + (u.generated ? 'Ready' : 'Not created yet') + '</span>';
         var allowed = u.generated ? P.recreate : P.create;
-        btn = allowed
-          ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '">' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
+        var waitDl = !u.deadlinePassed;                       // attendance is not final until the deadline has passed
+        var canClick = allowed && (!waitDl || P.access);      // the Super admin may go ahead anyway, after a warning
+        btn = canClick
+          ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '"' + (waitDl ? ' data-early="1"' : '') + '>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
           : '<button class="btn small secondary" type="button" disabled>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
         if (u.generated && P.remove) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button></div>';
         if (!allowed) note = 'Your login is not allowed to ' + (u.generated ? 'create this again' : 'create allotments') + '. Ask the Super admin.';
+        else if (waitDl && !P.access) note = u.deadlineSet ? 'Can be created after the availability deadline.' : 'Set the availability deadline first. The allotment can be created after it has passed.';
       } else if (u.generated) {
         chip = '<span class="chip wait">Created too early</span>';
         btn = P.remove ? '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button>' : '';
@@ -954,7 +959,14 @@
         btn = '<button class="btn small" type="button" disabled>Create allotment</button>';
         note = 'Can be created from ' + fmtDateEn(u.opens) + ', after ' + u.prevName + '.';
       }
-      h += '<div class="ek-row"><div><p><strong>' + esc(u.name) + '</strong></p><p style="font-size:18px;color:var(--muted)">' + esc(fmtDateEn(u.date)) + '</p>' + chip +
+      var dlHtml = '';
+      {
+        dlHtml = '<p style="font-size:17px;margin:8px 0 0"><strong>' + (u.deadlineSet ? (u.deadlinePassed ? 'Availability closed: ' : 'Availability closes: ') + esc(u.deadlineText) : 'No availability deadline set') + '</strong></p>';
+        if (P.deadline) dlHtml += '<details style="margin-top:6px"><summary>' + (u.deadlineSet ? 'Change the deadline' : 'Set the deadline') + '</summary>' +
+          '<input type="datetime-local" id="dl' + u.no + '" value="' + esc(u.deadline || '') + '" style="margin-top:8px">' +
+          '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn small" type="button" data-dlsave="' + u.no + '">Save</button>' + (u.deadlineSet ? '<button class="btn small secondary" type="button" data-dlclear="' + u.no + '">Clear</button>' : '') + '</div></details>';
+      }
+      h += '<div class="ek-row"><div><p><strong>' + esc(u.name) + '</strong></p><p style="font-size:18px;color:var(--muted)">' + esc(fmtDateEn(u.date)) + '</p>' + chip + dlHtml +
         (note ? '<p style="font-size:16px;color:var(--muted);margin-top:6px;max-width:34ch">' + esc(note) + '</p>' : '') + '</div>' + btn + '</div>';
     });
     h += '<div id="genMsg" role="status" aria-live="polite"></div></section>';
@@ -1031,13 +1043,26 @@
     }
     var g = e.target.closest('[data-gen]');
     if (g) {
-      var again = g.getAttribute('data-again') === '1';
+      var again = g.getAttribute('data-again') === '1', early = g.getAttribute('data-early') === '1';
+      if (early && !confirm('The availability deadline has not passed, so attendance may not be final. Create the allotment anyway?')) return;
       if (again && !confirm('This replaces the earlier portions for this Ekadashi. Devotees who already looked at their portion may see a different one. Continue?')) return;
       g.disabled = true; var old = g.textContent; g.textContent = 'Please wait...';
-      api({ action: 'adminGenerate', pin: pin, no: +g.getAttribute('data-gen') }).then(function (res) {
+      api({ action: 'adminGenerate', pin: pin, no: +g.getAttribute('data-gen'), override: early }).then(function (res) {
         if (res.ok) { loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, esc(res.message).replace(/\n/g, '<br>')); }); }
         else { g.disabled = false; g.textContent = old; say($('genMsg'), adminErr(res), true); }
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
+      return;
+    }
+    var ds = e.target.closest('[data-dlsave],[data-dlclear]');
+    if (ds) {
+      var dno = +(ds.getAttribute('data-dlsave') || ds.getAttribute('data-dlclear')), val = ds.hasAttribute('data-dlclear') ? '' : ($('dl' + dno).value || '');
+      if (ds.hasAttribute('data-dlsave') && !val) { say($('genMsg'), 'Please choose the date and time.', true); return; }
+      ds.disabled = true;
+      api({ action: 'adminDeadlineSave', pin: pin, no: dno, deadline: val }).then(function (res) {
+        if (!res.ok) { ds.disabled = false; say($('genMsg'), adminErr(res), true); return; }
+        adminData.upcoming.forEach(function (u) { if (u.no === dno) { u.deadline = res.deadline; u.deadlineText = res.deadlineText; u.deadlineSet = res.deadlineSet; u.deadlinePassed = res.deadlinePassed; } });
+        renderAdmin(); say($('genMsg'), val ? 'Deadline saved.' : 'Deadline cleared.');
+      }).catch(function () { ds.disabled = false; say($('genMsg'), NET, true); });
       return;
     }
     if (e.target.id === 'signOut') { pin = ''; adminData = null; devData = null; leadData = null; issuedList = []; grpData = null; grpFilter = 'all'; grpEdit = false; accData = null; timingData = null; me = { role: '', label: '', perms: {} }; $('adminPanel').hidden = true; $('adminLogin').hidden = false; $('pin').value = ''; return; }
@@ -1366,6 +1391,7 @@
   /* ===== Group leader (English) ===== */
   var lk = null, lkData = null;
   var LEADER_ERR = {
+    deadline_passed: 'The time for marking availability is over. Please contact the coordinator for any change.',
     wrong_login: 'The number or PIN is not correct, or this number is not a leader. If you are a leader and do not have a PIN yet, please ask the coordinator.',
     locked: 'Too many wrong attempts. Please try again after 15 minutes.',
     bad_phone: 'Please enter a 10-digit mobile number.',
@@ -1454,7 +1480,7 @@
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
     if (m.status === 'Done') h += '<span class="chip ready">Already read</span>';
-    else h += availBox(m, 'data-away', true);
+    else h += availBox(m, 'data-away', !lkData.ek.closed);
     return h + '<span class="saved" role="status"></span></div></div>';
   }
   function renderLeader() {
@@ -1466,6 +1492,9 @@
     if (!r.ek) {
       h += '<section class="card"><p>There is no upcoming Ekadashi in the sheet.</p></section>';
     } else {
+      if (r.ek.deadline) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
+        (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
+        (r.ek.closed ? '<br><span style="color:var(--muted)">Closed on ' + esc(r.ek.deadline) + '. Please contact the coordinator for any change.</span>' : '') + '</p></section>';
       h += '<section class="card"><label for="lkEk">Ekadashi</label><select id="lkEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.generated
