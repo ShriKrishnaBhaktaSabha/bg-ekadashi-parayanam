@@ -720,6 +720,7 @@
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
         if (p.action === 'adminChangePin') return res(!p.newPin || p.newPin.length < 4 ? { ok: false, error: 'weak_pin' } : { ok: true });
         if (p.action === 'adminDeadlineSave') return res({ ok: true, deadline: p.deadline, deadlineText: p.deadline ? 'Mon 16 Nov, 4:00 PM' : '', deadlineSet: !!p.deadline, deadlinePassed: false });
+        if (p.action === 'adminAvailabilityView') return res({ ok: true, url: '#', name: 'Rama Ekadashi', date: isoIn(2), count: 210, groups: 11 });
         if (p.action === 'adminTimingGet') return res({ ok: true, ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
         if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
         if (p.action === 'adminCheck') return res({ ok: true, errors: ['Group 5: the Zoom Leader "Smt. Example" is not found among the devotees.'], warnings: ['3 leader(s) have no PIN yet: Uma Sankaran, Ranjani Ramesh, Rupa Mukherjee.', 'No start time is set, so devotees will not see an estimated turn time.'], info: ['Checking Rama Ekadashi.', 'The allotment covers all 759 shlokas, among 126 devotees.', 'Each devotee reads 6 to 7 shlokas.'] });
@@ -970,6 +971,8 @@
         (note ? '<p style="font-size:16px;color:var(--muted);margin-top:6px;max-width:34ch">' + esc(note) + '</p>' : '') + '</div>' + btn + '</div>';
     });
     h += '<div id="genMsg" role="status" aria-live="polite"></div></section>';
+    h += '<section class="card"><h2>Availability sheet</h2><p style="margin:0 0 8px;color:var(--muted)">A clear list for the organiser in Google Sheet: every devotee by group, with a tick for Available, who marked it, and the count per group. It follows the next Ekadashi and updates as leaders mark.</p>' +
+      '<button class="btn secondary small" type="button" id="openAv">Update the availability sheet</button><div id="avBox" role="status" aria-live="polite"></div></section>';
 
     var p = r.progress;
     if (p) {
@@ -1069,6 +1072,18 @@
     if (e.target.id === 'openDev') { loadDevotees(e.target); return; }
     var tg = e.target.closest('[data-tog]');
     if (tg) { toggleActive(tg); return; }
+  });
+
+  /* --- availability sheet --- */
+  $('adminPanel').addEventListener('click', function (e) {
+    if (e.target.id !== 'openAv') return;
+    e.target.disabled = true; e.target.textContent = 'Please wait...';
+    api({ action: 'adminAvailabilityView', pin: pin }).then(function (r) {
+      e.target.disabled = false; e.target.textContent = 'Update the availability sheet';
+      if (!r.ok) { say($('avBox'), adminErr(r), true); return; }
+      $('avBox').innerHTML = '<p style="margin:12px 0 0"><strong>' + esc(r.name) + '</strong>, ' + esc(fmtDateEn(r.date)) + ': ' + esc(r.count) + ' devotees in ' + esc(r.groups) + ' groups.</p>' +
+        (r.url ? '<p style="margin:8px 0 0"><a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="font-weight:700">Open the availability sheet &#8599;</a></p>' : '');
+    }).catch(function () { e.target.disabled = false; e.target.textContent = 'Update the availability sheet'; say($('avBox'), NET, true); });
   });
 
   /* --- timing and readiness check --- */
