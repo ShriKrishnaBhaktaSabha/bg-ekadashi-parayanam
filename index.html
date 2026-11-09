@@ -241,6 +241,7 @@
     <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
     <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
     <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
+    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 12 Nov 2026 &middot; b</p>
   </footer>
 </div>
 
@@ -720,8 +721,12 @@
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
         if (p.action === 'adminChangePin') return res(!p.newPin || p.newPin.length < 4 ? { ok: false, error: 'weak_pin' } : { ok: true });
         if (p.action === 'adminDeadlineSave') return res({ ok: true, deadline: p.deadline, deadlineText: p.deadline ? 'Mon 16 Nov, 4:00 PM' : '', deadlineSet: !!p.deadline, deadlinePassed: false });
+        if (p.action === 'adminLeaderRoster') return res({ ok: true, ek: { no: 3, name: 'Devutthana Ekadashi', date: isoIn(17) }, groups: [
+          { group: 1, total: 21, available: 20, leader: { name: 'Radha Rani Basabathini', found: true, phone: '9876500001', available: true }, zoomLeader: { name: 'Lalitha Ganesh', found: true, phone: '9876500002', available: true } },
+          { group: 2, total: 19, available: 17, leader: { name: 'Ramya Murugesh', found: true, phone: '9876500003', available: false }, zoomLeader: { name: 'Radha Krishnaswamy', found: true, phone: '9876500004', available: true } },
+          { group: 3, total: 20, available: 20, leader: { name: 'Madhavi Kotra', found: true, phone: '9876500005', available: true }, zoomLeader: { name: '', found: false, phone: '', available: null } }] });
         if (p.action === 'adminAvailabilityView') return res({ ok: true, url: '#', name: 'Rama Ekadashi', date: isoIn(2), count: 210, groups: 11 });
-        if (p.action === 'adminTimingGet') return res({ ok: true, ek: { no: 1, date: isoIn(0), name: 'Rama Ekadashi', generated: true }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
+        if (p.action === 'adminTimingGet') return res({ ok: true, options: [{ no: 3, name: 'Devutthana Ekadashi', date: isoIn(17) }, { no: 4, name: 'Utpanna Ekadashi', date: isoIn(31) }], ek: { no: p.no || 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
         if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
         if (p.action === 'adminCheck') return res({ ok: true, errors: ['Group 5: the Zoom Leader "Smt. Example" is not found among the devotees.'], warnings: ['3 leader(s) have no PIN yet: Uma Sankaran, Ranjani Ramesh, Rupa Mukherjee.', 'No start time is set, so devotees will not see an estimated turn time.'], info: ['Checking Rama Ekadashi.', 'The allotment covers all 759 shlokas, among 126 devotees.', 'Each devotee reads 6 to 7 shlokas.'] });
         if (p.action === 'adminSetAvailability' || p.action === 'adminSetRead') return res({ ok: true, changed: 1, skipped: 0 });
@@ -1008,6 +1013,8 @@
       h += '</ul></details></section>';
     }
 
+    h += '<section class="card"><h2>Leaders by group</h2><p style="margin:0 0 8px;color:var(--muted)">The Group Leader and Zoom Leader of every group for the next Ekadashi, with phone numbers, and whether they are available.</p>' +
+      '<button class="btn secondary small" type="button" id="openRoster">Show the leaders</button><div id="rosterBox"></div></section>';
     h += '<section class="card"><h2>Timing</h2><p style="margin:0 0 6px;color:var(--muted)">Set when the parayanam starts. Devotees then see an approximate time for their turn, and it adjusts as devotees finish.</p>' +
       '<button class="btn secondary small" type="button" id="openTiming">Open timing</button><div id="timeBox"></div></section>';
     h += '<section class="card"><h2>Check before the Ekadashi</h2><p style="margin:0 0 6px;color:var(--muted)">Looks for problems: leaders without a PIN, missing leader names, devotees without a portion, and more. Nothing is changed.</p>' +
@@ -1074,6 +1081,27 @@
     if (tg) { toggleActive(tg); return; }
   });
 
+  /* --- leaders by group --- */
+  $('adminPanel').addEventListener('click', function (e) {
+    if (e.target.id !== 'openRoster') return;
+    e.target.disabled = true; e.target.textContent = 'Please wait...';
+    api({ action: 'adminLeaderRoster', pin: pin }).then(function (r) {
+      e.target.disabled = false; e.target.textContent = 'Reload the leaders';
+      if (!r.ok) { say($('rosterBox'), adminErr(r), true); return; }
+      var who = function (label, p) {
+        if (!p.name) return '<small>' + label + ': <strong>not set</strong></small>';
+        var chip = !p.found ? '<span class="chip grey">not found in the list</span>' : (p.available ? '<span class="chip ready">Available</span>' : '<span class="chip wait">Not available</span>');
+        var call = p.phone ? ' <a href="tel:' + esc(String(p.phone).replace(/[^0-9+]/g, '')) + '">' + esc(p.phone) + '</a>' : '';
+        return '<small>' + label + ': <strong>' + esc(p.name) + '</strong> ' + chip + call + '</small>';
+      };
+      $('rosterBox').innerHTML = '<p style="margin:12px 0 4px"><strong>' + esc(r.ek.name) + '</strong>, ' + esc(fmtDateEn(r.ek.date)) + '</p>' +
+        r.groups.map(function (g) {
+          return '<div class="dev"><p class="nm">Group ' + esc(g.group) + ' <span style="font-weight:400;color:var(--muted)">&middot; ' + esc(g.available) + ' of ' + esc(g.total) + ' available</span></p>' +
+            who('Group Leader', g.leader) + who('Zoom Leader', g.zoomLeader) + '</div>';
+        }).join('');
+    }).catch(function () { e.target.disabled = false; e.target.textContent = 'Show the leaders'; say($('rosterBox'), NET, true); });
+  });
+
   /* --- availability sheet --- */
   $('adminPanel').addEventListener('click', function (e) {
     if (e.target.id !== 'openAv') return;
@@ -1092,7 +1120,8 @@
     var r = timingData;
     if (!r.ek) { $('timeBox').innerHTML = '<p>No Ekadashi found.</p>'; return; }
     var canSave = me.perms.timing;
-    $('timeBox').innerHTML = '<p style="margin:12px 0 4px"><strong>' + esc(r.ek.name) + '</strong>, ' + esc(fmtDateEn(r.ek.date)) + '</p>' +
+    var opts = (r.options || []).map(function (o) { return '<option value="' + o.no + '"' + (o.no === r.ek.no ? ' selected' : '') + '>' + esc(o.name) + ', ' + esc(fmtDateEn(o.date)) + '</option>'; }).join('');
+    $('timeBox').innerHTML = '<label for="tmEk" style="margin-top:12px">Ekadashi</label><select id="tmEk">' + (opts || '<option>' + esc(r.ek.name) + '</option>') + '</select>' +
       '<form id="timingForm" novalidate><label for="tmStart">Start time</label><input id="tmStart" type="time" value="' + esc(r.start) + '"' + (canSave ? '' : ' disabled') + '>' +
       '<label for="tmPace" style="margin-top:12px">Pace</label><select id="tmPace"' + (canSave ? '' : ' disabled') + '>' +
       [['0.9', 'Faster than usual'], ['1', 'As expected'], ['1.1', 'Slower than usual'], ['1.25', 'Much slower']].map(function (o) { return '<option value="' + o[0] + '"' + (String(r.factor) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
@@ -1114,6 +1143,10 @@
         $('checkBox').innerHTML = blk('To fix', 'wait', r.errors) + blk('Worth a look', 'grey', r.warnings) + '<ul class="list">' + r.info.map(function (x) { return '<li><span style="color:var(--muted)">' + esc(x) + '</span></li>'; }).join('') + '</ul>';
       }).catch(function () { e.target.disabled = false; e.target.textContent = 'Run the check'; say($('checkBox'), NET, true); });
     }
+  });
+  $('adminPanel').addEventListener('change', function (e) {
+    if (e.target.id !== 'tmEk') return;
+    api({ action: 'adminTimingGet', pin: pin, no: +e.target.value }).then(function (r) { if (r.ok) { timingData = r; renderTiming(); } else say($('timeBox'), adminErr(r), true); }).catch(function () { say($('timeBox'), NET, true); });
   });
   $('adminPanel').addEventListener('submit', function (e) {
     if (e.target.id !== 'timingForm') return;
