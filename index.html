@@ -754,7 +754,7 @@
           var lg = [{ group: 3, members: mem.map(function (m) { return { id: m[0], name: m[1], away: !!demo.away[cur.no + m[0]], status: m[2], portion: m[3], count: 6 }; }) }];
           if (lkState === 'admin') lg.push({ group: 4, members: [{ id: 'BG-040', name: 'Ranjani Ramesh', away: !!demo.away[cur.no + 'BG-040'], status: null }, { id: 'BG-041', name: 'Rajeswari Shivashanker', away: false, status: null }] });
           lg[0].practice = 'Saturday, 7:00 PM IST';
-          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Group Leader (all groups)' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], all: lkState === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Group Leader (all groups)', canChangePin: p.leaderPin === '3333' }, ekadashis: eks, ek: Object.assign({}, cur, { deadline: 'Mon 9 Nov, 4:00 PM', closed: /[?&]closed/.test(location.search) }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
+          return res({ ok: true, leader: { name: lkState === 'admin' ? 'Group Leader (all groups)' : 'Rupa Mukherjee', groups: lkState === 'admin' ? [3, 4] : [3], all: lkState === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Group Leader (all groups)', canChangePin: p.leaderPin === '3333' }, ekadashis: eks, ek: Object.assign({}, cur, { deadline: 'Mon 9 Nov, 4:00 PM', closed: /[?&]closed/.test(location.search), closedWhy: /[?&]closed=allot/.test(location.search) ? 'allotment' : 'deadline' }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, groups: lg });
         }
         if (p.action === 'leaderSet') { demo.away[p.no + p.id] = p.away; return res({ ok: true }); }
         if (p.action === 'adminRemoveAllotment') return res({ ok: true, removed: 210 });
@@ -1443,6 +1443,7 @@
   var lk = null, lkData = null;
   var LEADER_ERR = {
     deadline_passed: 'The time for marking availability is over. Please contact the coordinator for any change.',
+    allotment_done: 'The shloka allotment has already been done, so availability can no longer be changed here. Please contact the coordinator.',
     wrong_login: 'The number or PIN is not correct, or this number is not a leader. If you are a leader and do not have a PIN yet, please ask the coordinator.',
     locked: 'Too many wrong attempts. Please try again after 15 minutes.',
     bad_phone: 'Please enter a 10-digit mobile number.',
@@ -1543,9 +1544,9 @@
     if (!r.ek) {
       h += '<section class="card"><p>There is no upcoming Ekadashi in the sheet.</p></section>';
     } else {
-      if (r.ek.deadline) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
+      if (r.ek.deadline || r.ek.closed) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
         (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
-        (r.ek.closed ? '<br><span style="color:var(--muted)">Closed on ' + esc(r.ek.deadline) + '. Please contact the coordinator for any change.</span>' : '') + '</p></section>';
+        (r.ek.closed ? '<br><span style="color:var(--muted)">' + (r.ek.closedWhy === 'allotment' ? 'The shloka allotment has already been done.' : 'Closed on ' + esc(r.ek.deadline) + '.') + ' Please contact the coordinator for any change.</span>' : '') + '</p></section>';
       h += '<section class="card"><label for="lkEk">Ekadashi</label><select id="lkEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.generated
@@ -1665,9 +1666,9 @@
     if (!r.ek) {
       h += '<section class="card"><p>No Ekadashi is ready for marking yet. You can mark who has read from the day of the Ekadashi.</p></section>';
     } else {
-      if (r.ek.deadline) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
+      if ((r.ek.deadline || r.ek.closed) && !(r.ek.generated && r.ek.canMark)) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
         (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
-        (r.ek.closed ? '<br><span style="color:var(--muted)">Closed on ' + esc(r.ek.deadline) + '. Please contact the coordinator for any change.</span>' : '') + '</p></section>';
+        (r.ek.closed ? '<br><span style="color:var(--muted)">' + (r.ek.closedWhy === 'allotment' ? 'The shloka allotment has already been done.' : 'Closed on ' + esc(r.ek.deadline) + '.') + ' Please contact the coordinator for any change.</span>' : '') + '</p></section>';
       h += '<section class="card"><label for="zlEk">Ekadashi</label><select id="zlEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.canMark
