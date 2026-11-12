@@ -133,6 +133,7 @@
   #lkEk, #zlEk { font-size: calc(19px * var(--s)); padding: 10px 12px; }
   .sharebox { margin: 10px 0 4px; }
   .sharebox .btn { margin-top: 10px; }
+  .dev small { display: block; }
   .dev.nextup { background: #FFF9E5; border-left: 5px solid var(--marigold); padding-left: 10px; border-radius: 8px; }
   .turn { margin: 8px 0 0; font-weight: 800; font-size: calc(22px * var(--s)); color: var(--ink); }
   .tog.off { background: #F3F3F3; color: #666; }
@@ -717,7 +718,7 @@
           if (zs === 'admin') zg.push({ group: 8, members: [{ id: 'BG-090', name: 'Ramya Murugesh', portion: 'Chapter 13, shlokas 1-4', count: 4, status: demo.zl['BG-090'] || 'Pending' }] });
           var zEks = [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', canMark: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', canMark: false }];
           var zE = zEks.filter(function (e) { return e.no === Number(p.no); })[0] || zEks[0];
-          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: Object.assign({}, zE, { generated: true, canAvail: true, deadline: '', closed: false }), nextGroups: [{ group: 8, zoomLeader: 'Smt. Radha SK' }, { group: 9, zoomLeader: 'Smt. Anuradha Sampath' }], groups: zg });
+          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: Object.assign({}, zE, { generated: true, canMark: !/[?&]early/.test(location.search), canAvail: true, deadline: '', closed: false, start: '10:00 AM' }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, nextGroups: [{ group: 8, zoomLeader: 'Smt. Radha SK' }, { group: 9, zoomLeader: 'Smt. Anuradha Sampath' }], groups: zg });
         }
         if (p.action === 'adminAccess') return res(p.pin === '1234' ? { ok: true, accounts: [{ role: 'coordinator', label: 'Coordinator (limited access)', set: true }, { role: 'glall', label: 'Group Leader (all groups)', set: true }, { role: 'zlall', label: 'Zoom Leader (all groups)', set: false }] } : { ok: false, error: 'no_permission' });
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
@@ -1518,6 +1519,28 @@
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
   }
+  // Tells leaders what to do on the Ekadashi, as soon as the allotment (and so the attendance) is final
+  function dayCard(role, r) {
+    if (!r.ek.generated) return '';
+    var z = r.zoom || {}, when = fmtDateEn(r.ek.date) + (r.ek.start ? ', around ' + r.ek.start : '');
+    var zoomLine = z.link ? '<p style="margin:12px 0 0;font-size:18px"><a href="' + esc(z.link) + '" target="_blank" rel="noopener" style="font-weight:700">Open the Zoom link &#8599;</a>' +
+      (z.id ? ' &middot; Meeting ID ' + esc(z.id) : '') + (z.passcode ? ' &middot; Passcode ' + esc(z.passcode) : '') + '</p>' : '';
+    var steps = role === 'zl' ? [
+      'Join the Zoom a little before the start time.',
+      'Open this page and sign in with <strong>Zoom Leader login</strong>. On the day of the Ekadashi, a <strong>Done \u2713</strong> button appears next to each devotee of your group.',
+      'Your devotees are listed in reading order. The <strong>Next</strong> tag shows who reads next.',
+      'When a devotee finishes reading, tap <strong>Done \u2713</strong>. The time is recorded. Tap <strong>Undo</strong> if you tapped by mistake.',
+      'Devotees marked Not available were left out, and their shlokas are shared among the others. You do not need to mark them.',
+      'When your group is almost finished, tell the Zoom Leader of the next group. Their name is shown on this screen.'
+    ] : [
+      'Share your group\'s allotment on WhatsApp, using the button on your group below.',
+      'Remind your devotees to join the Zoom a little before their turn. The approximate turn time is shown against each name.',
+      'On the day, the Zoom Leader of your group marks each devotee as Done when they finish. You do not need to mark anything.',
+      'If a devotee cannot read on the day, please tell the coordinator, so that someone else can read that portion.'
+    ];
+    return '<section class="card"><details' + (r.ek.canMark ? '' : ' open') + ' style="margin:0"><summary><strong>What to do on ' + esc(when) + '</strong></summary>' +
+      '<ol style="margin:10px 0 0 22px;padding:0;font-size:18px;line-height:1.5">' + steps.map(function (x) { return '<li style="margin-top:6px">' + x + '</li>'; }).join('') + '</ol>' + zoomLine + '</details></section>';
+  }
   // Availability as a tick box: ticked = will read, not ticked = not available
   function availBox(m, attr, enabled) {
     var one = function (val, label, checked) {
@@ -1547,6 +1570,7 @@
       if (r.ek.deadline || r.ek.closed) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
         (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
         (r.ek.closed ? '<br><span style="color:var(--muted)">' + (r.ek.closedWhy === 'allotment' ? 'The shloka allotment has already been done.' : 'Closed on ' + esc(r.ek.deadline) + '.') + ' Please contact the coordinator for any change.</span>' : '') + '</p></section>';
+      h += dayCard('gl', r);
       h += '<section class="card"><label for="lkEk">Ekadashi</label><select id="lkEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.generated
@@ -1651,7 +1675,7 @@
       '<div style="margin-top:4px">' + availBox(m, 'data-zav', !!canAvail) + '</div><div class="ctl">';
     var btn = function (st, label, primary) { return '<button type="button" class="btn small ' + (primary ? '' : 'secondary') + '" data-zact="' + st + '" data-id="' + esc(m.id) + '">' + label + '</button>'; };
     if (m.hasRow && !m.away) {
-      if (!canMark) h += '<span class="chip grey">' + (m.status === 'Done' ? 'Done \u2713' : 'Not yet') + '</span>';
+      if (!canMark) { if (m.status === 'Done') h += '<span class="chip ready">Done \u2713</span>'; }
       else if (m.status === 'Done') h += '<span class="chip ready">Done \u2713</span>' + btn('Pending', 'Undo', false);
       else h += btn('Done', 'Done \u2713', true);
     }
@@ -1669,11 +1693,12 @@
       if ((r.ek.deadline || r.ek.closed) && !(r.ek.generated && r.ek.canMark)) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
         (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
         (r.ek.closed ? '<br><span style="color:var(--muted)">' + (r.ek.closedWhy === 'allotment' ? 'The shloka allotment has already been done.' : 'Closed on ' + esc(r.ek.deadline) + '.') + ' Please contact the coordinator for any change.</span>' : '') + '</p></section>';
+      h += dayCard('zl', r);
       h += '<section class="card"><label for="zlEk">Ekadashi</label><select id="zlEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
         '<p style="margin:12px 0 0;color:var(--muted);font-size:18px">' + (r.ek.canMark
           ? 'One after another on Zoom: when a devotee finishes reading, tap Done. The time is recorded. Tap Undo if you tapped by mistake.'
-          : (r.ek.canAvail ? 'Tick Available or Not available for each devotee. Reading can be marked from the day of the Ekadashi.' : 'You can check the portions now. Reading can be marked from the day of the Ekadashi.')) + '</p></section>';
+          : (r.ek.canAvail ? 'Tick Available or Not available for each devotee. Reading can be marked from the day of the Ekadashi.' : 'You can see the portions now. The Done buttons appear on this screen on the day of the Ekadashi.')) + '</p></section>';
       if (r.nextGroups && r.nextGroups.length) h += '<section class="card"><h3>Reading after your group</h3>' + r.nextGroups.map(function (n, i) {
         return '<p style="margin:6px 0 0;font-size:' + (i === 0 ? '20' : '18') + 'px"><strong>' + (i === 0 ? 'Next: ' : 'Then: ') + 'Group ' + esc(n.group) + '</strong> &mdash; Zoom Leader ' + esc(n.zoomLeader || 'not set') + '</p>'; }).join('') + '</section>';
       else if (r.lastGroup) h += '<section class="card"><p style="margin:0">Your group is the <strong>last group</strong> to read.</p></section>';
