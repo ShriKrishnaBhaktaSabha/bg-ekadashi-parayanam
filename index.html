@@ -242,7 +242,7 @@
     <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
     <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
     <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
-    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 12 Nov 2026 &middot; b</p>
+    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 13 Nov 2026 &middot; a</p>
   </footer>
 </div>
 
@@ -718,7 +718,7 @@
           if (zs === 'admin') zg.push({ group: 8, members: [{ id: 'BG-090', name: 'Ramya Murugesh', portion: 'Chapter 13, shlokas 1-4', count: 4, status: demo.zl['BG-090'] || 'Pending' }] });
           var zEks = [{ no: 1, date: isoIn(0), name: 'Rama Ekadashi', canMark: true }, { no: 2, date: isoIn(15), name: 'Devutthana Ekadashi', canMark: false }];
           var zE = zEks.filter(function (e) { return e.no === Number(p.no); })[0] || zEks[0];
-          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: Object.assign({}, zE, { generated: true, canMark: !/[?&]early/.test(location.search), canAvail: true, deadline: '', closed: false, start: '10:00 AM' }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, nextGroups: [{ group: 8, zoomLeader: 'Smt. Radha SK' }, { group: 9, zoomLeader: 'Smt. Anuradha Sampath' }], groups: zg });
+          return res({ ok: true, leader: { name: zs === 'admin' ? 'Zoom Leader (all groups)' : 'Uma Sankaran', groups: zs === 'admin' ? [7, 8] : [7], all: zs === 'admin', label: p.leaderPin === '1234' ? 'Super admin' : 'Zoom Leader (all groups)', canChangePin: p.leaderPin === '4444' }, ekadashis: zEks, ek: Object.assign({}, zE, { generated: true, canMark: !/[?&]early/.test(location.search) || /[?&]practice/.test(location.search), practice: /[?&]practice/.test(location.search), canAvail: true, deadline: '', closed: false, start: '10:00 AM' }), zoom: { link: 'https://zoom.us/j/0000000000', id: '000 0000 0000', passcode: '18' }, nextGroups: [{ group: 8, zoomLeader: 'Smt. Radha SK' }, { group: 9, zoomLeader: 'Smt. Anuradha Sampath' }], groups: zg });
         }
         if (p.action === 'adminAccess') return res(p.pin === '1234' ? { ok: true, accounts: [{ role: 'coordinator', label: 'Coordinator (limited access)', set: true }, { role: 'glall', label: 'Group Leader (all groups)', set: true }, { role: 'zlall', label: 'Zoom Leader (all groups)', set: false }] } : { ok: false, error: 'no_permission' });
         if (p.action === 'adminSetRolePin') return res(['1234', '2222', '3333', '4444'].indexOf(p.newPin) >= 0 ? { ok: false, error: 'pin_in_use' } : { ok: true });
@@ -729,6 +729,7 @@
           { group: 2, total: 19, available: 17, leader: { name: 'Ramya Murugesh', found: true, phone: '9876500003', available: false }, zoomLeader: { name: 'Radha Krishnaswamy', found: true, phone: '9876500004', available: true } },
           { group: 3, total: 20, available: 20, leader: { name: 'Madhavi Kotra', found: true, phone: '9876500005', available: true }, zoomLeader: { name: '', found: false, phone: '', available: null } }] });
         if (p.action === 'adminAvailabilityView') return res({ ok: true, url: '#', name: 'Rama Ekadashi', date: isoIn(2), count: 210, groups: 11 });
+        if (p.action === 'adminPractice') return res({ ok: true, practice: !!p.on, cleared: p.on ? 0 : 3 });
         if (p.action === 'adminTimingGet') return res({ ok: true, options: [{ no: 3, name: 'Devutthana Ekadashi', date: isoIn(17) }, { no: 4, name: 'Utpanna Ekadashi', date: isoIn(31) }], ek: { no: p.no || 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
         if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
         if (p.action === 'adminCheck') return res({ ok: true, errors: ['Group 5: the Zoom Leader "Smt. Example" is not found among the devotees.'], warnings: ['3 leader(s) have no PIN yet: Uma Sankaran, Ranjani Ramesh, Rupa Mukherjee.', 'No start time is set, so devotees will not see an estimated turn time.'], info: ['Checking Rama Ekadashi.', 'The allotment covers all 759 shlokas, among 126 devotees.', 'Each devotee reads 6 to 7 shlokas.'] });
@@ -957,6 +958,7 @@
           ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '"' + (waitDl ? ' data-early="1"' : '') + '>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
           : '<button class="btn small secondary" type="button" disabled>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
         if (u.generated && P.remove) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button></div>';
+        if (u.generated && P.mark_reading && u.date > todayIso()) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small ' + (u.practice ? '' : 'secondary') + '" type="button" data-practice="' + u.no + '" data-on="' + (u.practice ? 0 : 1) + '">' + (u.practice ? 'End practice' : 'Practice the Done buttons') + '</button></div>';
         if (!allowed) note = 'Your login is not allowed to ' + (u.generated ? 'create this again' : 'create allotments') + '. Ask the Super admin.';
         else if (waitDl && !P.access) note = u.deadlineSet ? 'Can be created after the availability deadline.' : 'Set the availability deadline first. The allotment can be created after it has passed.';
       } else if (u.generated) {
@@ -975,6 +977,7 @@
           '<input type="datetime-local" id="dl' + u.no + '" value="' + esc(u.deadline || '') + '" style="margin-top:8px">' +
           '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn small" type="button" data-dlsave="' + u.no + '">Save</button>' + (u.deadlineSet ? '<button class="btn small secondary" type="button" data-dlclear="' + u.no + '">Clear</button>' : '') + '</div></details>';
       }
+      if (u.practice) dlHtml += '<p style="margin:8px 0 0;font-size:17px"><span class="chip wait">Practice is on</span> Zoom Leaders can use the Done buttons now. Everything marked is cleared when you end practice, and automatically on the day of the Ekadashi.</p>';
       if (u.generated && u.tabUrl) dlHtml += '<p style="margin:8px 0 0"><a href="' + esc(u.tabUrl) + '" target="_blank" rel="noopener" style="font-weight:700">Open this Ekadashi in Google Sheet &#8599;</a></p>';
       h += '<div class="ek-row"><div><p><strong>' + esc(u.name) + '</strong></p><p style="font-size:18px;color:var(--muted)">' + esc(fmtDateEn(u.date)) + '</p>' + chip + dlHtml +
         (note ? '<p style="font-size:16px;color:var(--muted);margin-top:6px;max-width:34ch">' + esc(note) + '</p>' : '') + '</div>' + btn + '</div>';
@@ -1065,6 +1068,18 @@
         if (res.ok) { loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, esc(res.message).replace(/\n/g, '<br>')); }); }
         else { g.disabled = false; g.textContent = old; say($('genMsg'), adminErr(res), true); }
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
+      return;
+    }
+    var pr = e.target.closest('[data-practice]');
+    if (pr) {
+      var pno = +pr.getAttribute('data-practice'), pon = pr.getAttribute('data-on') === '1';
+      if (!pon && !confirm('This ends practice and clears every Done mark for this Ekadashi, so the real reading starts clean. Continue?')) return;
+      pr.disabled = true;
+      api({ action: 'adminPractice', pin: pin, no: pno, on: pon }).then(function (res) {
+        if (!res.ok) { pr.disabled = false; say($('genMsg'), adminErr(res), true); return; }
+        adminData.upcoming.forEach(function (u) { if (u.no === pno) u.practice = res.practice; });
+        renderAdmin(); say($('genMsg'), res.practice ? 'Practice is on. Zoom Leaders can now try the Done buttons.' : 'Practice has ended' + (res.cleared ? ' and ' + res.cleared + ' marks were cleared.' : '.'));
+      }).catch(function () { pr.disabled = false; say($('genMsg'), NET, true); });
       return;
     }
     var ds = e.target.closest('[data-dlsave],[data-dlclear]');
@@ -1519,6 +1534,7 @@
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
   }
+  function todayIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   // Tells leaders what to do on the Ekadashi, as soon as the allotment (and so the attendance) is final
   function dayCard(role, r) {
     if (!r.ek.generated) return '';
@@ -1693,6 +1709,7 @@
       if ((r.ek.deadline || r.ek.closed) && !(r.ek.generated && r.ek.canMark)) h += '<section class="card" style="border-left:6px solid ' + (r.ek.closed ? 'var(--bad)' : 'var(--marigold)') + '"><p style="margin:0;font-size:19px"><strong>' +
         (r.ek.closed ? 'Marking availability is closed.' : 'Please mark availability before ' + esc(r.ek.deadline) + '.') + '</strong>' +
         (r.ek.closed ? '<br><span style="color:var(--muted)">' + (r.ek.closedWhy === 'allotment' ? 'The shloka allotment has already been done.' : 'Closed on ' + esc(r.ek.deadline) + '.') + ' Please contact the coordinator for any change.</span>' : '') + '</p></section>';
+      if (r.ek.practice) h += '<section class="card" style="border-left:6px solid var(--marigold)"><p style="margin:0;font-size:19px"><strong>Practice mode</strong><br><span style="color:var(--muted)">Please try the Done buttons now. These marks are only for practice. They are cleared before the Ekadashi, so the real reading starts clean.</span></p></section>';
       h += dayCard('zl', r);
       h += '<section class="card"><label for="zlEk">Ekadashi</label><select id="zlEk">' +
         r.ekadashis.map(function (e) { return '<option value="' + e.no + '"' + (e.no === r.ek.no ? ' selected' : '') + '>' + esc(e.name) + ', ' + esc(shortDate(e.date)) + '</option>'; }).join('') + '</select>' +
