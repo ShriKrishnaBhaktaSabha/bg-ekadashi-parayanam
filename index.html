@@ -242,7 +242,7 @@
     <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
     <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
     <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
-    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 13 Nov 2026 &middot; a</p>
+    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 13 Nov 2026 &middot; b</p>
   </footer>
 </div>
 
@@ -1571,7 +1571,7 @@
     var h = '<div class="dev" data-mid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + '</p>' +
       (m.portion ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + '<div class="ctl">';
     if (m.status === 'Done') h += '<span class="chip ready">Already read</span>';
-    else h += availBox(m, 'data-away', !lkData.ek.closed);
+    else if (!lkData.ek.generated) h += availBox(m, 'data-away', !lkData.ek.closed);
     return h + '<span class="saved" role="status"></span></div></div>';
   }
   function renderLeader() {
@@ -1596,7 +1596,7 @@
       r.groups.filter(function (g) { return lkGrp === 'all' || String(g.group) === lkGrp; }).forEach(function (g) {
         var away = g.members.filter(function (m) { return m.away; }).length;
         h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p style="margin:0 0 6px;color:var(--muted)">' + g.members.length + ' active devotees' +
-          (away ? ', ' + away + ' not available' : '') + '</p>' + shareBlock(g) + '<div>' + g.members.map(memberRow).join('') + '</div></section>';
+          (away ? ', ' + away + ' not available' : '') + '</p>' + shareBlock(g) + '<div>' + (lkData.ek.generated ? g.members.filter(function (m) { return !m.away; }) : g.members).map(memberRow).join('') + '</div></section>';
       });
     }
     if (!r.leader.all || r.leader.canChangePin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="changePinForm" novalidate>' +
@@ -1688,7 +1688,7 @@
     if (m.doneAt) times.push('Done ' + esc(m.doneAt));
     var h = '<div class="dev' + (isNext ? ' nextup' : '') + '" data-zid="' + esc(m.id) + '"><p class="nm">' + esc(m.name) + batchTag(m) + (isNext ? ' <span class="chip ready">Next</span>' : '') + '</p>' +
       (m.hasRow ? '<small>' + esc(m.portion) + ' (' + esc(m.count) + ' shlokas)</small>' : '') + (times.length ? '<small>' + times.join(' &middot; ') + '</small>' : '') +
-      '<div style="margin-top:4px">' + availBox(m, 'data-zav', !!canAvail) + '</div><div class="ctl">';
+      (zData && zData.ek && zData.ek.generated ? '' : '<div style="margin-top:4px">' + availBox(m, 'data-zav', !!canAvail) + '</div>') + '<div class="ctl">';
     var btn = function (st, label, primary) { return '<button type="button" class="btn small ' + (primary ? '' : 'secondary') + '" data-zact="' + st + '" data-id="' + esc(m.id) + '">' + label + '</button>'; };
     if (m.hasRow && !m.away) {
       if (!canMark) { if (m.status === 'Done') h += '<span class="chip ready">Done \u2713</span>'; }
@@ -1725,10 +1725,12 @@
         var done = withRow.filter(function (m) { return m.status === 'Done'; }).length, pending = withRow.filter(function (m) { return m.status !== 'Done'; }).length;
         var pct = withRow.length ? Math.round(100 * done / withRow.length) : 0;
         var nextM = withRow.filter(function (m) { return m.status !== 'Done'; })[0], nextId = nextM ? nextM.id : '';
+        var shown = r.ek.generated ? g.members.filter(function (m) { return !m.away && m.hasRow; }) : g.members;
         h += '<section class="card"><h2>Group ' + esc(g.group) + '</h2><p class="stat">' + (r.ek.generated ? done + ' of ' + withRow.length + ' done' : active.length + ' of ' + g.members.length + ' available') + '</p>' +
           (r.ek.generated ? '<div class="meter" role="img" aria-label="' + pct + ' percent have read"><span style="width:' + pct + '%"></span></div>' : '') +
           (pending && r.ek.canMark ? '<button class="btn secondary" type="button" data-allgrp="' + esc(g.group) + '">Mark everyone as done</button>' : '') +
-          '<div style="margin-top:8px">' + g.members.map(function (m) { return zRow(m, r.ek.canMark, r.ek.canMark && m.id === nextId, r.ek.canAvail); }).join('') + '</div></section>';
+          (r.ek.generated && g.members.length - shown.length ? '<p style="margin:8px 0 0;color:var(--muted);font-size:17px">' + (g.members.length - shown.length) + ' not available (not shown)</p>' : '') +
+          '<div style="margin-top:8px">' + shown.map(function (m) { return zRow(m, r.ek.canMark, r.ek.canMark && m.id === nextId, r.ek.canAvail); }).join('') + '</div></section>';
       });
     }
     if (!r.leader.all || r.leader.canChangePin) h += '<section class="card"><details style="margin:0"><summary>Change my PIN</summary><form id="zChangePin" novalidate>' +
