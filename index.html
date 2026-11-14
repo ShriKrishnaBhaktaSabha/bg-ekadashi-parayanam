@@ -242,7 +242,7 @@
     <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
     <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
     <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
-    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 13 Nov 2026 &middot; b</p>
+    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 14 Nov 2026 &middot; a</p>
   </footer>
 </div>
 
@@ -1751,6 +1751,23 @@
       if (res.ok) done(); else fail(zlErr(res));
     }).catch(function () { fail(NET); });
   }
+  // The screen changes at once; the save runs in the background and is undone only if it fails.
+  var zBusy = 0, zTimer = null;
+  function nowClockText_() { var d = new Date(), h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap; }
+  function zLater() { clearTimeout(zTimer); zTimer = setTimeout(function () { if (!zData) return; if (zBusy > 0) { zLater(); return; } zRefresh(window.scrollY); }, 15000); }
+  function zRender() { var y = window.scrollY; renderZl(); window.scrollTo(0, y); }
+  function zApply(ids, status) {
+    var undo = [];
+    zData.groups.forEach(function (g) { g.members.forEach(function (m) {
+      if (ids.indexOf(m.id) >= 0 && m.hasRow && !m.away) {
+        undo.push({ m: m, status: m.status, doneAt: m.doneAt, joinedAt: m.joinedAt, recitingAt: m.recitingAt });
+        m.status = status; m.doneAt = status === 'Done' ? nowClockText_() : '';
+        if (status === 'Pending') { m.joinedAt = ''; m.recitingAt = ''; }
+      }
+    }); });
+    return undo;
+  }
+  function zRevert(undo) { undo.forEach(function (u) { u.m.status = u.status; u.m.doneAt = u.doneAt; u.m.joinedAt = u.joinedAt; u.m.recitingAt = u.recitingAt; }); }
   function zRefresh(y) {
     return api({ action: 'zlOverview', phone: zk.phone, leaderPin: zk.pin, no: zData.ek.no }).then(function (r) {
       if (r.ok && !r.mustChange) { zData = r; renderZl(); window.scrollTo(0, y); }
@@ -1763,24 +1780,26 @@
       var gno = allb.getAttribute('data-allgrp'), grp = zData.groups.filter(function (g) { return String(g.group) === gno; })[0];
       var ids = grp.members.filter(function (m) { return m.hasRow && !m.away && m.status !== 'Done'; }).map(function (m) { return m.id; });
       if (!confirm('Mark all ' + ids.length + ' remaining devotees of group ' + gno + ' as done?')) return;
-      allb.disabled = true; allb.textContent = 'Please wait...';
-      zSave(ids, 'Done', function () { zRefresh(window.scrollY); }, function (msg) { allb.disabled = false; allb.textContent = 'Mark everyone as done'; alert(msg); });
+      var undoAll = zApply(ids, 'Done'); zRender(); zBusy++;
+      zSave(ids, 'Done', function () { zBusy--; zLater(); }, function (msg) { zBusy--; zRevert(undoAll); zRender(); alert(msg); });
       return;
     }
     var av = e.target.closest('[data-zav]');
     if (av) {
       var aid = av.getAttribute('data-zav'), am = zFind(aid), wantAway = av.getAttribute('data-val') === 'no';
       if (wantAway === !!am.away) { av.checked = true; return; }
-      var sib = swapTicks_(av); av.disabled = true;
+      var oldAway = am.away, oldStatus = am.status;
+      am.away = wantAway; am.status = wantAway ? 'Unavailable' : (am.hasRow ? 'Pending' : ''); zRender(); zBusy++;
       api({ action: 'zlAvail', phone: zk.phone, leaderPin: zk.pin, no: zData.ek.no, id: aid, away: wantAway }).then(function (res) {
-        if (res.ok) zRefresh(window.scrollY); else { av.disabled = false; undoTicks_(av, sib); zFlash(aid, zlErr(res), true); }
-      }).catch(function () { av.disabled = false; undoTicks_(av, sib); zFlash(aid, NET, true); });
+        zBusy--;
+        if (res.ok) zLater(); else { am.away = oldAway; am.status = oldStatus; zRender(); zFlash(aid, zlErr(res), true); }
+      }).catch(function () { zBusy--; am.away = oldAway; am.status = oldStatus; zRender(); zFlash(aid, NET, true); });
       return;
     }
     var b = e.target.closest('[data-zact]'); if (!b) return;
     var id = b.getAttribute('data-id'), want = b.getAttribute('data-zact');
-    var all = b.closest('.ctl').querySelectorAll('button'); all.forEach(function (x) { x.disabled = true; });
-    zSave([id], want, function () { zRefresh(window.scrollY); }, function (msg) { all.forEach(function (x) { x.disabled = false; }); zFlash(id, msg, true); });
+    var undo = zApply([id], want); zRender(); zBusy++;
+    zSave([id], want, function () { zBusy--; zLater(); }, function (msg) { zBusy--; zRevert(undo); zRender(); zFlash(id, msg, true); });
   });
 
   $('zlPanel').addEventListener('change', function (e) {
