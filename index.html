@@ -242,7 +242,7 @@
     <button class="btn secondary foot" id="leaderLink" type="button" data-i18n="leaderLogin">Leader login</button>
     <button class="btn secondary foot" id="zlLink" type="button" data-i18n="zlLogin">Zoom Leader login</button>
     <button class="btn secondary foot" id="toggleView" type="button" data-i18n="coordLogin">Coordinator login</button>
-    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 14 Nov 2026 &middot; a</p>
+    <p style="margin:14px 0 0;font-size:14px;color:var(--muted);text-align:center">Version 14 Nov 2026 &middot; b</p>
   </footer>
 </div>
 
@@ -729,6 +729,7 @@
           { group: 2, total: 19, available: 17, leader: { name: 'Ramya Murugesh', found: true, phone: '9876500003', available: false }, zoomLeader: { name: 'Radha Krishnaswamy', found: true, phone: '9876500004', available: true } },
           { group: 3, total: 20, available: 20, leader: { name: 'Madhavi Kotra', found: true, phone: '9876500005', available: true }, zoomLeader: { name: '', found: false, phone: '', available: null } }] });
         if (p.action === 'adminAvailabilityView') return res({ ok: true, url: '#', name: 'Rama Ekadashi', date: isoIn(2), count: 210, groups: 11 });
+        if (p.action === 'adminRebuildTab') return res({ ok: true, tab: '20-Nov-26', tabUrl: '#' });
         if (p.action === 'adminPractice') return res({ ok: true, practice: !!p.on, cleared: p.on ? 0 : 3 });
         if (p.action === 'adminTimingGet') return res({ ok: true, options: [{ no: 3, name: 'Devutthana Ekadashi', date: isoIn(17) }, { no: 4, name: 'Utpanna Ekadashi', date: isoIn(31) }], ek: { no: p.no || 3, date: isoIn(17), name: 'Devutthana Ekadashi', generated: false }, start: demo.start || '', factor: 1, end: demo.start ? '9:10 PM' : '', avgMinutes: '' });
         if (p.action === 'adminTimingSave') { demo.start = p.start; return res({ ok: true, end: '9:10 PM' }); }
@@ -958,6 +959,7 @@
           ? '<button class="btn small ' + (u.generated ? 'secondary' : '') + '" type="button" data-gen="' + u.no + '" data-again="' + (u.generated ? 1 : 0) + '"' + (waitDl ? ' data-early="1"' : '') + '>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>'
           : '<button class="btn small secondary" type="button" disabled>' + (u.generated ? 'Create again' : 'Create allotment') + '</button>';
         if (u.generated && P.remove) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small secondary" type="button" data-remove="' + u.no + '">Remove allotment</button></div>';
+        if (u.generated && P.create) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small secondary" type="button" data-rebuild="' + u.no + '">Update the date tab (same portions)</button></div>';
         if (u.generated && P.mark_reading && u.date > todayIso()) btn = '<div style="display:flex;flex-direction:column;gap:8px">' + btn + '<button class="btn small ' + (u.practice ? '' : 'secondary') + '" type="button" data-practice="' + u.no + '" data-on="' + (u.practice ? 0 : 1) + '">' + (u.practice ? 'End practice' : 'Practice the Done buttons') + '</button></div>';
         if (!allowed) note = 'Your login is not allowed to ' + (u.generated ? 'create this again' : 'create allotments') + '. Ask the Super admin.';
         else if (waitDl && !P.access) note = u.deadlineSet ? 'Can be created after the availability deadline.' : 'Set the availability deadline first. The allotment can be created after it has passed.';
@@ -1062,12 +1064,21 @@
     if (g) {
       var again = g.getAttribute('data-again') === '1', early = g.getAttribute('data-early') === '1';
       if (early && !confirm('The availability deadline has not passed, so attendance may not be final. Create the allotment anyway?')) return;
-      if (again && !confirm('This replaces the earlier portions for this Ekadashi. Devotees who already looked at their portion may see a different one. Continue?')) return;
+      if (again && !confirm('This creates the portions again from the current availability. Devotees may get different portions, and anyone who already looked at theirs would see a different one. To keep the same portions, press Cancel and use "Update the date tab (same portions)" instead. Continue?')) return;
       g.disabled = true; var old = g.textContent; g.textContent = 'Please wait...';
       api({ action: 'adminGenerate', pin: pin, no: +g.getAttribute('data-gen'), override: early }).then(function (res) {
         if (res.ok) { loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, esc(res.message).replace(/\n/g, '<br>')); }); }
         else { g.disabled = false; g.textContent = old; say($('genMsg'), adminErr(res), true); }
       }).catch(function () { g.disabled = false; g.textContent = old; say($('genMsg'), NET, true); });
+      return;
+    }
+    var rb = e.target.closest('[data-rebuild]');
+    if (rb) {
+      var oldRb = rb.textContent; rb.disabled = true; rb.textContent = 'Please wait...';
+      api({ action: 'adminRebuildTab', pin: pin, no: +rb.getAttribute('data-rebuild') }).then(function (res) {
+        if (!res.ok) { rb.disabled = false; rb.textContent = oldRb; say($('genMsg'), adminErr(res), true); return; }
+        loadAdmin().then(function () { var m = $('genMsg'); if (m) say(m, 'The tab ' + esc(res.tab) + ' is ready, with the same portions as before. It is the first tab of the sheet.'); });
+      }).catch(function () { rb.disabled = false; rb.textContent = oldRb; say($('genMsg'), NET, true); });
       return;
     }
     var pr = e.target.closest('[data-practice]');
